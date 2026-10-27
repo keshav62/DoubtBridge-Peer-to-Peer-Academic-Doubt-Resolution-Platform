@@ -5,7 +5,7 @@ import { Search, Bell, ChevronDown, Menu } from 'lucide-react';
 
 /**
  * Navbar props:
- *   onMenuClick {function} — called when the mobile menu button is pressed
+ *   onMenuClick {function} — called when the mobile hamburger is pressed
  */
 export default function Navbar({ onMenuClick }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -13,69 +13,27 @@ export default function Navbar({ onMenuClick }) {
   return (
     <header
       role="banner"
-      style={{
-        height: '64px',
-        background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border-color)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-        padding: '0 1.5rem',
-        position: 'sticky',
-        top: 0,
-        zIndex: 30,
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-      }}
+      className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-white/[0.08] bg-[#111827]/90 px-4 md:px-6 backdrop-blur-md"
     >
-      {/* Left — mobile menu toggle + search */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
-        {/* Mobile hamburger — hidden on desktop via CSS */}
+      {/* ── Left: hamburger + search ────────────────────────── */}
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+
+        {/* Mobile hamburger — hidden ≥md */}
         <button
           onClick={onMenuClick}
           aria-label="Open navigation menu"
           aria-haspopup="true"
-          className="navbar-menu-btn"
-          style={{
-            display: 'none',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            background: 'transparent',
-            border: '1px solid var(--border-color)',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            flexShrink: 0,
-            transition: 'all 0.15s ease',
-          }}
+          className="flex md:hidden items-center justify-center h-9 w-9 flex-shrink-0 rounded-lg border border-white/[0.08] text-gray-400 transition-colors hover:bg-white/[0.06] hover:text-gray-100 focus-visible:outline-2 focus-visible:outline-indigo-500"
         >
           <Menu size={18} />
         </button>
 
-        {/* Search field */}
-        <div
-          className="navbar-search-wrapper"
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            flex: 1,
-            maxWidth: '460px',
-          }}
-        >
-          {/* Search icon */}
+        {/* Search bar */}
+        <div className="relative flex max-w-[460px] flex-1 items-center">
           <Search
             size={15}
             aria-hidden="true"
-            style={{
-              position: 'absolute',
-              left: '0.75rem',
-              color: 'var(--text-subtle)',
-              pointerEvents: 'none',
-              flexShrink: 0,
-            }}
+            className="pointer-events-none absolute left-3 text-gray-500"
           />
 
           <input
@@ -86,246 +44,71 @@ export default function Navbar({ onMenuClick }) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search doubts, topics, or courses..."
-            className="navbar-search-input"
-            style={{
-              width: '100%',
-              height: '38px',
-              padding: '0 2.75rem 0 2.25rem',
-              borderRadius: '8px',
-              border: '1px solid var(--border-color)',
-              background: 'rgba(255,255,255,0.04)',
-              color: 'var(--text-main)',
-              fontSize: '0.875rem',
-              outline: 'none',
-              transition: 'all 0.15s ease',
-            }}
+            className="h-[38px] w-full rounded-lg border border-white/[0.08] bg-white/[0.04] pl-9 pr-[4.5rem] text-sm text-gray-100 placeholder-gray-600 outline-none transition-all focus:border-indigo-500/50 focus:bg-indigo-500/[0.06] focus:ring-2 focus:ring-indigo-500/[0.12] [&::-webkit-search-cancel-button]:hidden"
           />
 
-          {/* Keyboard shortcut badge — hidden on mobile via CSS */}
+          {/* Ctrl K hint — hidden on mobile */}
           <div
             aria-hidden="true"
-            className="navbar-kbd"
-            style={{
-              position: 'absolute',
-              right: '0.625rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '2px',
-              pointerEvents: 'none',
-            }}
+            className="pointer-events-none absolute right-2.5 hidden items-center gap-0.5 sm:flex"
           >
-            <kbd
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '1px 5px',
-                borderRadius: '4px',
-                fontSize: '0.6rem',
-                fontFamily: 'inherit',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-subtle)',
-                lineHeight: 1.6,
-              }}
-            >
+            <kbd className="inline-flex items-center rounded px-1.5 py-0.5 text-[0.6rem] leading-none border border-white/[0.08] bg-white/[0.06] text-gray-500">
               Ctrl
             </kbd>
-            <kbd
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '1px 5px',
-                borderRadius: '4px',
-                fontSize: '0.6rem',
-                fontFamily: 'inherit',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-subtle)',
-                lineHeight: 1.6,
-              }}
-            >
+            <kbd className="inline-flex items-center rounded px-1.5 py-0.5 text-[0.6rem] leading-none border border-white/[0.08] bg-white/[0.06] text-gray-500">
               K
             </kbd>
           </div>
         </div>
       </div>
 
-      {/* Right — notifications + user avatar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-        {/* Notification bell */}
+      {/* ── Right: notifications + user ─────────────────────── */}
+      <div className="flex flex-shrink-0 items-center gap-2">
+
+        {/* Bell */}
         <button
           aria-label="View notifications (3 unread)"
-          className="navbar-icon-btn"
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '36px',
-            height: '36px',
-            borderRadius: '8px',
-            background: 'transparent',
-            border: '1px solid transparent',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-gray-400 transition-colors hover:border-white/[0.08] hover:bg-white/[0.06] hover:text-gray-100 focus-visible:outline-2 focus-visible:outline-indigo-500"
         >
           <Bell size={18} />
-          {/* Unread badge */}
+          {/* Unread dot */}
           <span
             aria-hidden="true"
-            style={{
-              position: 'absolute',
-              top: '7px',
-              right: '7px',
-              width: '7px',
-              height: '7px',
-              borderRadius: '50%',
-              background: '#6366f1',
-              border: '1.5px solid var(--bg-secondary)',
-            }}
+            className="absolute right-[7px] top-[7px] h-[7px] w-[7px] rounded-full border-[1.5px] border-[#111827] bg-indigo-500"
           />
         </button>
 
-        {/* Vertical divider */}
-        <div
-          aria-hidden="true"
-          style={{
-            width: '1px',
-            height: '22px',
-            background: 'var(--border-color)',
-            margin: '0 0.125rem',
-          }}
-        />
+        {/* Vertical separator */}
+        <div aria-hidden="true" className="mx-0.5 h-[22px] w-px bg-white/[0.08]" />
 
-        {/* User avatar + dropdown */}
+        {/* Avatar + dropdown */}
         <button
           aria-label="Open user menu"
           aria-haspopup="true"
-          className="navbar-user-btn"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '4px 6px 4px 4px',
-            borderRadius: '8px',
-            background: 'transparent',
-            border: '1px solid transparent',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
+          className="flex items-center gap-2 rounded-lg border border-transparent py-1 pl-1 pr-1.5 transition-colors hover:border-white/[0.08] hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-indigo-500"
         >
-          {/* Avatar */}
           <div
             aria-hidden="true"
-            style={{
-              width: '30px',
-              height: '30px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.68rem',
-              fontWeight: 700,
-              color: '#fff',
-              letterSpacing: '0.03em',
-              flexShrink: 0,
-            }}
+            className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 text-[0.68rem] font-bold tracking-wide text-white"
           >
             SU
           </div>
 
-          {/* Name + role — hidden on small screens via CSS */}
-          <div className="navbar-user-info" style={{ textAlign: 'left' }}>
-            <div
-              style={{
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: 'var(--text-main)',
-                whiteSpace: 'nowrap',
-                lineHeight: 1.2,
-              }}
-            >
+          {/* Name + role hidden on small screens */}
+          <div className="hidden text-left sm:block">
+            <p className="whitespace-nowrap text-[0.8rem] font-semibold leading-tight text-gray-100">
               Student User
-            </div>
-            <div
-              style={{
-                fontSize: '0.68rem',
-                color: 'var(--text-subtle)',
-                lineHeight: 1.2,
-              }}
-            >
-              Student
-            </div>
+            </p>
+            <p className="text-[0.68rem] leading-tight text-gray-500">Student</p>
           </div>
 
           <ChevronDown
             size={13}
-            className="navbar-chevron"
-            style={{ color: 'var(--text-subtle)', flexShrink: 0 }}
+            className="hidden flex-shrink-0 text-gray-500 sm:block"
+            aria-hidden="true"
           />
         </button>
       </div>
-
-      {/* Responsive + interactive styles */}
-      <style>{`
-        /* Show hamburger on mobile */
-        @media (max-width: 767px) {
-          .navbar-menu-btn {
-            display: flex !important;
-          }
-          .navbar-kbd {
-            display: none !important;
-          }
-          .navbar-user-info,
-          .navbar-chevron {
-            display: none !important;
-          }
-        }
-
-        /* Search input focus state */
-        .navbar-search-input:focus {
-          border-color: rgba(99,102,241,0.5) !important;
-          background: rgba(99,102,241,0.06) !important;
-          box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
-        }
-
-        /* Search input placeholder */
-        .navbar-search-input::placeholder {
-          color: var(--text-subtle);
-        }
-
-        /* Remove native search cancel button */
-        .navbar-search-input::-webkit-search-cancel-button {
-          -webkit-appearance: none;
-        }
-
-        /* Hover states */
-        .navbar-menu-btn:hover,
-        .navbar-icon-btn:hover {
-          background: rgba(255,255,255,0.06) !important;
-          border-color: var(--border-color) !important;
-          color: var(--text-main) !important;
-        }
-
-        .navbar-user-btn:hover {
-          background: rgba(255,255,255,0.06) !important;
-          border-color: var(--border-color) !important;
-        }
-
-        /* Focus rings */
-        .navbar-menu-btn:focus-visible,
-        .navbar-icon-btn:focus-visible,
-        .navbar-user-btn:focus-visible,
-        .navbar-search-input:focus-visible {
-          outline: 2px solid #6366f1;
-          outline-offset: 2px;
-        }
-      `}</style>
     </header>
   );
 }

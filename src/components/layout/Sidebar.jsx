@@ -22,8 +22,7 @@ import {
 
 /**
  * Navigation configuration.
- * Each item supports an optional `roles` array for future role-based filtering.
- * When `roles` is undefined, the item is visible to all authenticated users.
+ * Add `roles: ['moderator']` to restrict an item to specific roles.
  */
 const NAV_GROUPS = [
   {
@@ -59,12 +58,6 @@ const NAV_GROUPS = [
   },
 ];
 
-/**
- * Sidebar props:
- *   isOpen   {boolean}  — controls mobile drawer visibility
- *   onClose  {function} — called when user dismisses the drawer
- *   userRole {string}   — optional role for nav item visibility (future use)
- */
 export default function Sidebar({ isOpen = false, onClose, userRole }) {
   const pathname = usePathname();
 
@@ -80,108 +73,54 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* ── Mobile backdrop ──────────────────────────────────── */}
       {isOpen && (
         <div
           onClick={onClose}
           aria-hidden="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.55)',
-            backdropFilter: 'blur(2px)',
-            zIndex: 40,
-          }}
+          className="fixed inset-0 z-40 bg-black/55 backdrop-blur-sm md:hidden"
         />
       )}
 
-      {/* Sidebar panel */}
+      {/* ── Sidebar panel ────────────────────────────────────── */}
       <aside
         role="navigation"
         aria-label="Main navigation"
         data-open={isOpen ? 'true' : 'false'}
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          height: '100vh',
-          width: '252px',
-          background: 'var(--bg-secondary)',
-          borderRight: '1px solid var(--border-color)',
-          display: 'flex',
-          flexDirection: 'column',
-          zIndex: 50,
-          overflowY: 'auto',
-          transition: 'transform 0.25s ease',
-        }}
-        className="sidebar-panel"
+        className={[
+          // Base
+          'fixed top-0 left-0 z-50 h-screen w-[252px] flex flex-col',
+          'bg-[#111827] border-r border-white/[0.08] overflow-y-auto',
+          'transition-transform duration-250 ease-in-out',
+          // Mobile: slide in/out
+          isOpen ? 'translate-x-0' : '-translate-x-full',
+          // Desktop: always visible, in-flow (override fixed)
+          'md:relative md:translate-x-0 md:flex-shrink-0',
+        ].join(' ')}
       >
-        {/* Branding */}
-        <div style={{ padding: '1.25rem 1rem 0.75rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-              <div
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: '0 0 12px rgba(99,102,241,0.4)',
-                }}
-              >
+        {/* ── Branding ─────────────────────────────────────────── */}
+        <div className="px-4 pt-5 pb-3">
+          <div className="flex items-center justify-between">
+            {/* Logo + wordmark */}
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-[34px] w-[34px] flex-shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-[0_0_12px_rgba(99,102,241,0.4)]">
                 <BookOpen size={17} color="#fff" strokeWidth={2.5} />
               </div>
               <div>
-                <div
-                  style={{
-                    fontSize: '1rem',
-                    fontWeight: 700,
-                    letterSpacing: '-0.01em',
-                    color: 'var(--text-main)',
-                    lineHeight: 1.1,
-                  }}
-                >
+                <p className="text-[1rem] font-bold tracking-tight text-gray-50 leading-none">
                   DoubtBridge
-                </div>
-                <div
-                  style={{
-                    fontSize: '0.65rem',
-                    color: 'var(--text-subtle)',
-                    letterSpacing: '0.04em',
-                    marginTop: '1px',
-                  }}
-                >
+                </p>
+                <p className="mt-0.5 text-[0.625rem] tracking-widest text-gray-500">
                   Learn · Ask · Solve
-                </div>
+                </p>
               </div>
             </div>
 
-            {/* Mobile close button — hidden on desktop via CSS */}
+            {/* Mobile close button */}
             <button
               onClick={onClose}
               aria-label="Close navigation menu"
-              className="sidebar-close-btn"
-              style={{
-                background: 'transparent',
-                color: 'var(--text-muted)',
-                borderRadius: '6px',
-                padding: '4px',
-                display: 'none',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                border: 'none',
-              }}
+              className="flex md:hidden items-center justify-center rounded-md p-1 text-gray-400 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-indigo-500"
             >
               <X size={18} />
             </button>
@@ -189,31 +128,23 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
         </div>
 
         {/* Divider */}
-        <div style={{ margin: '0 1rem', height: '1px', background: 'var(--border-color)' }} />
+        <div className="mx-4 h-px bg-white/[0.08]" />
 
-        {/* Navigation */}
-        <nav style={{ flex: 1, padding: '0.75rem 0.75rem 0' }}>
+        {/* ── Navigation ───────────────────────────────────────── */}
+        <nav className="flex-1 px-3 pt-3">
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter(isVisible);
             if (visibleItems.length === 0) return null;
 
             return (
-              <div key={group.label} style={{ marginBottom: '1.25rem' }}>
-                <div
-                  style={{
-                    fontSize: '0.65rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-subtle)',
-                    padding: '0 0.5rem',
-                    marginBottom: '0.35rem',
-                  }}
-                >
+              <div key={group.label} className="mb-5">
+                {/* Group label */}
+                <p className="mb-1 px-2 text-[0.625rem] font-bold uppercase tracking-[0.08em] text-gray-600">
                   {group.label}
-                </div>
+                </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {/* Items */}
+                <div className="flex flex-col gap-0.5">
                   {visibleItems.map((item) => {
                     const Icon = item.icon;
                     const isActive =
@@ -226,48 +157,29 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
                         href={item.href}
                         onClick={handleLinkClick}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`nav-link${isActive ? ' nav-link--active' : ''}`}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.625rem',
-                          padding: '0.55rem 0.625rem',
-                          borderRadius: '8px',
-                          fontSize: '0.875rem',
-                          fontWeight: isActive ? 600 : 500,
-                          color: isActive ? '#6366f1' : 'var(--text-muted)',
-                          background: isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
-                          border: isActive
-                            ? '1px solid rgba(99,102,241,0.2)'
-                            : '1px solid transparent',
-                          transition: 'all 0.15s ease',
-                          textDecoration: 'none',
-                          position: 'relative',
-                        }}
+                        className={[
+                          'relative flex items-center gap-2.5 rounded-lg px-2.5 py-[0.55rem] text-sm transition-all duration-150',
+                          'focus-visible:outline-2 focus-visible:outline-indigo-500 focus-visible:outline-offset-1',
+                          isActive
+                            ? 'bg-indigo-500/10 text-indigo-400 font-semibold border border-indigo-500/20'
+                            : 'text-gray-400 font-medium border border-transparent hover:bg-white/[0.04] hover:text-gray-100',
+                        ].join(' ')}
                       >
+                        {/* Active indicator bar */}
                         {isActive && (
                           <span
                             aria-hidden="true"
-                            style={{
-                              position: 'absolute',
-                              left: 0,
-                              top: '25%',
-                              height: '50%',
-                              width: '3px',
-                              borderRadius: '0 3px 3px 0',
-                              background: '#6366f1',
-                            }}
+                            className="absolute left-0 top-1/4 h-1/2 w-[3px] rounded-r-sm bg-indigo-500"
                           />
                         )}
+
                         <Icon
                           size={16}
                           strokeWidth={isActive ? 2.5 : 2}
-                          style={{
-                            color: isActive ? '#6366f1' : 'var(--text-subtle)',
-                            flexShrink: 0,
-                          }}
+                          className={isActive ? 'text-indigo-400' : 'text-gray-500'}
+                          aria-hidden="true"
                         />
-                        <span style={{ flex: 1 }}>{item.label}</span>
+                        <span className="flex-1">{item.label}</span>
                       </Link>
                     );
                   })}
@@ -277,149 +189,46 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
           })}
         </nav>
 
-        {/* Learning encouragement card */}
-        <div style={{ padding: '0 0.75rem', marginBottom: '0.75rem' }}>
-          <div
-            style={{
-              background:
-                'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(6,182,212,0.1) 100%)',
-              border: '1px solid rgba(99,102,241,0.25)',
-              borderRadius: '10px',
-              padding: '0.875rem',
-              display: 'flex',
-              gap: '0.5rem',
-            }}
-          >
-            <Sparkles
-              size={15}
-              style={{ color: '#6366f1', flexShrink: 0, marginTop: '1px' }}
-            />
+        {/* ── Learning encouragement card ───────────────────────── */}
+        <div className="px-3 pb-3">
+          <div className="flex gap-2 rounded-[10px] border border-indigo-500/25 bg-gradient-to-br from-indigo-500/15 to-cyan-400/10 p-3.5">
+            <Sparkles size={15} className="mt-0.5 flex-shrink-0 text-indigo-400" aria-hidden="true" />
             <div>
-              <div
-                style={{
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'var(--text-main)',
-                  marginBottom: '0.2rem',
-                }}
-              >
-                Keep learning together
-              </div>
-              <div
-                style={{
-                  fontSize: '0.7rem',
-                  color: 'var(--text-subtle)',
-                  lineHeight: 1.45,
-                }}
-              >
+              <p className="text-[0.78rem] font-semibold text-gray-100">Keep learning together</p>
+              <p className="mt-0.5 text-[0.7rem] leading-[1.45] text-gray-500">
                 Ask, share, and grow with your peers.
-              </div>
+              </p>
             </div>
           </div>
         </div>
 
         {/* Divider */}
-        <div style={{ margin: '0 1rem', height: '1px', background: 'var(--border-color)' }} />
+        <div className="mx-4 h-px bg-white/[0.08]" />
 
-        {/* User profile */}
-        <div style={{ padding: '0.75rem' }}>
+        {/* ── User profile ─────────────────────────────────────── */}
+        <div className="p-3">
           <button
             aria-label="Open user menu"
-            className="profile-btn"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.625rem',
-              width: '100%',
-              padding: '0.5rem',
-              borderRadius: '8px',
-              background: 'transparent',
-              border: '1px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              textAlign: 'left',
-            }}
+            className="flex w-full items-center gap-2.5 rounded-lg border border-transparent p-2 text-left transition-all duration-150 hover:border-white/[0.08] hover:bg-white/[0.04] focus-visible:outline-2 focus-visible:outline-indigo-500"
           >
+            {/* Avatar */}
             <div
               aria-hidden="true"
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                color: '#fff',
-                flexShrink: 0,
-                letterSpacing: '0.03em',
-              }}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 text-[0.72rem] font-bold tracking-wide text-white"
             >
               SU
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: '0.825rem',
-                  fontWeight: 600,
-                  color: 'var(--text-main)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                Student User
-              </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>Student</div>
+
+            {/* User info */}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[0.825rem] font-semibold text-gray-100">Student User</p>
+              <p className="text-[0.7rem] text-gray-500">Student</p>
             </div>
-            <ChevronDown size={14} style={{ color: 'var(--text-subtle)', flexShrink: 0 }} />
+
+            <ChevronDown size={14} className="flex-shrink-0 text-gray-500" aria-hidden="true" />
           </button>
         </div>
       </aside>
-
-      {/* Responsive + interactive styles */}
-      <style>{`
-        @media (min-width: 768px) {
-          .sidebar-panel {
-            position: sticky !important;
-            flex-shrink: 0;
-            transform: none !important;
-          }
-          .sidebar-close-btn {
-            display: none !important;
-          }
-        }
-        @media (max-width: 767px) {
-          .sidebar-panel {
-            transform: translateX(-100%);
-          }
-          .sidebar-panel[data-open="true"] {
-            transform: translateX(0);
-          }
-          .sidebar-close-btn {
-            display: flex !important;
-          }
-        }
-        .nav-link:hover:not(.nav-link--active) {
-          background: rgba(255,255,255,0.04) !important;
-          color: var(--text-main) !important;
-        }
-        .nav-link:hover:not(.nav-link--active) svg {
-          color: var(--text-muted) !important;
-        }
-        .profile-btn:hover {
-          background: rgba(255,255,255,0.04) !important;
-          border-color: var(--border-color) !important;
-        }
-        .nav-link:focus-visible,
-        .profile-btn:focus-visible,
-        .sidebar-close-btn:focus-visible {
-          outline: 2px solid #6366f1;
-          outline-offset: 2px;
-        }
-      `}</style>
     </>
   );
 }
