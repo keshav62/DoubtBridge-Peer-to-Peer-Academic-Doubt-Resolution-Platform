@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
@@ -18,7 +18,7 @@ export default function DashboardShell({ children, userRole }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0a0e17]">
+    <div className="flex h-screen overflow-hidden bg-[#F5F9FF]">
 
       {/* ── Sidebar ──────────────────────────────────────────── */}
       <Sidebar
@@ -32,14 +32,13 @@ export default function DashboardShell({ children, userRole }) {
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
 
         {/*
-          Main content area
-          — bg-[#0d1117] gives a subtle shade shift from the sidebar
-          — overflow-y-auto lets the page scroll independently of the sidebar
+          Main content area — bg-[#F5F9FF] light blue-white surface
+          overflow-y-auto lets the page scroll independently of the sidebar
         */}
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto bg-[#0d1117] p-6 md:p-8 focus:outline-none"
+          className="flex-1 overflow-y-auto bg-[#F5F9FF] p-6 md:p-8 focus:outline-none"
         >
           {children}
         </main>

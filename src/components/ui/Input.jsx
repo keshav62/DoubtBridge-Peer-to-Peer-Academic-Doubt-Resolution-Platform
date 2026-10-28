@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Input — reusable accessible form input
  *
  * Props:
@@ -31,11 +31,11 @@ export default function Input({
       {label && (
         <label
           htmlFor={id}
-          className="text-sm font-medium text-gray-300"
+          className="text-sm font-medium text-[#344568]"
         >
           {label}
           {required && (
-            <span aria-hidden="true" className="ml-1 text-rose-400">*</span>
+            <span aria-hidden="true" className="ml-1 text-red-500">*</span>
           )}
         </label>
       )}
@@ -46,7 +46,7 @@ export default function Input({
         {icon && (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute left-3 flex-shrink-0 text-gray-500"
+            className="pointer-events-none absolute left-3 flex-shrink-0 text-[#94A3B8]"
           >
             {icon}
           </span>
@@ -63,16 +63,16 @@ export default function Input({
               .join(' ') || undefined
           }
           className={[
-            'h-10 w-full rounded-lg border bg-white/[0.04] text-sm text-gray-100 placeholder-gray-600 outline-none',
+            'h-10 w-full rounded-xl border bg-white text-sm text-[#101B3D] placeholder-[#94A3B8] outline-none',
             'transition-all duration-150',
             // Padding — add left padding when icon is present
             icon ? 'pl-9 pr-3' : 'px-3',
             // Border states
             error
-              ? 'border-rose-500/60 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-              : 'border-white/[0.1] focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/15',
+              ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/15'
+              : 'border-[#E5EAF2] focus:border-[#2563EB]/50 focus:ring-2 focus:ring-[#2563EB]/10',
             // Disabled
-            disabled ? 'cursor-not-allowed opacity-50' : '',
+            disabled ? 'cursor-not-allowed opacity-50 bg-[#F8FAFC]' : '',
             inputClass,
           ]
             .filter(Boolean)
@@ -83,14 +83,14 @@ export default function Input({
 
       {/* Error message */}
       {error && (
-        <p id={`${id}-error`} role="alert" className="text-xs text-rose-400">
+        <p id={`${id}-error`} role="alert" className="text-xs text-red-600">
           {error}
         </p>
       )}
 
       {/* Hint text */}
       {!error && hint && (
-        <p id={`${id}-hint`} className="text-xs text-gray-500">
+        <p id={`${id}-hint`} className="text-xs text-[#64748B]">
           {hint}
         </p>
       )}

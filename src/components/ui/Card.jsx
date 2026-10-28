@@ -1,5 +1,5 @@
-﻿/**
- * Card — reusable container
+/**
+ * Card — reusable white container
  *
  * Props:
  *   children    {ReactNode}
@@ -26,10 +26,10 @@ export default function Card({
   return (
     <div
       className={[
-        'rounded-xl border border-white/[0.08] bg-[#111827]/70 backdrop-blur-sm',
+        'rounded-2xl border border-[#E5EAF2] bg-white',
         PADDING_CLASSES[padding] ?? PADDING_CLASSES.md,
-        shadow ? 'shadow-lg shadow-black/30' : '',
-        hover ? 'transition-colors duration-150 hover:border-white/[0.14] hover:bg-[#1a2233]/70' : '',
+        shadow ? 'shadow-sm shadow-slate-200/60' : '',
+        hover ? 'transition-all duration-150 hover:border-[#BFDBFE] hover:shadow-md hover:shadow-blue-100/50' : '',
         className,
       ]
         .filter(Boolean)
