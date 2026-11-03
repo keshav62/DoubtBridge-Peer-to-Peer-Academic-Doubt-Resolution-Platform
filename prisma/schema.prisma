@@ -1,6 +1,7 @@
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -16,15 +17,57 @@ enum Role {
 
 enum DoubtStatus {
   OPEN
+  ASSIGNED
   CLAIMED
+  ANSWERED
   RESOLVED
   CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum Urgency {
   LOW
   MEDIUM
   HIGH
+}
+
+enum AnswerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ModerationDecision {
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+}
+
+enum ResourceStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  DOUBT_CREATED
+  ANSWER_SUBMITTED
+  MODERATION_DECISION
+  DOUBT_RESOLVED
+  SYSTEM
 }
 
 enum ReportStatus {
@@ -34,23 +77,58 @@ enum ReportStatus {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  passwordHash  String?
-  role          Role      @default(STUDENT)
-  reputation    Int       @default(0)
-  avatar        String?
-  subjects      String?   // Comma-separated or JSON list of subjects
-  isAvailable   Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  avatarUrl    String?
+  avatar       String?  // Backward compatibility with existing UI
+  role         Role     @default(STUDENT)
+  department   String?
+  academicYear String?
+  isActive     Boolean  @default(true)
+  isAvailable  Boolean  @default(true)  // Backward compatibility with existing helper queries
+  reputation   Int      @default(0)     // Peer reputation points
+  subjects     String?                  // Comma-separated subjects for helper matching
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  askedDoubts      Doubt[]   @relation("StudentDoubts")
-  claimedDoubts    Doubt[]   @relation("HelperDoubts")
-  answers          Answer[]
-  articles         KnowledgeArticle[]
-  reportsSubmitted Report[]  @relation("ReporterUser")
+  // Profile and assignments
+  helperProfile      HelperProfile?
+  doubtAssignments   DoubtAssignment[]   @relation("HelperAssignments")
+  moderationReviews  ModerationReview[]  @relation("ModeratorReviews")
+
+  // Academic activity relations
+  authoredDoubts     Doubt[]             @relation("UserAuthoredDoubts")
+  askedDoubts        Doubt[]             @relation("StudentDoubts")
+  claimedDoubts      Doubt[]             @relation("HelperDoubts")
+  answers            Answer[]            @relation("UserAnswers")
+  knowledgeResources KnowledgeResource[] @relation("UserKnowledgeResources")
+  articles           KnowledgeArticle[]  @relation("UserArticles")
+  bookmarks          Bookmark[]          @relation("UserBookmarks")
+  notifications      Notification[]      @relation("UserNotifications")
+  reportsSubmitted   Report[]            @relation("ReporterUser")
+
+  @@index([role])
+  @@index([email])
+}
+
+model HelperProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio             String?
+  expertise       String?  // Specific topics or specializations
+  subjects        String?  // Comma-separated list of qualified subjects
+  reputation      Int      @default(0)
+  totalAnswers    Int      @default(0)
+  acceptedAnswers Int      @default(0)
+  isAvailable     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isAvailable])
+  @@index([reputation])
 }
 
 model Doubt {
@@ -58,33 +136,109 @@ model Doubt {
   title       String
   description String
   subject     String
-  tags        String?     // Comma-separated tags
+  topic       String?
+  difficulty  String?     // e.g. Beginner, Intermediate, Advanced
   status      DoubtStatus @default(OPEN)
-  urgency     Urgency     @default(MEDIUM)
+  priority    Priority    @default(MEDIUM)
+  urgency     Urgency     @default(MEDIUM) // Backward compatibility with existing team code
+  tags        String?                      // Backward compatibility with existing comma-separated tags
+
+  authorId    String?
+  author      User?       @relation("UserAuthoredDoubts", fields: [authorId], references: [id], onDelete: SetNull)
+
   studentId   String
   student     User        @relation("StudentDoubts", fields: [studentId], references: [id], onDelete: Cascade)
+
   helperId    String?
-  helper      User?       @relation("HelperDoubts", fields: [helperId], references: [id])
+  helper      User?       @relation("HelperDoubts", fields: [helperId], references: [id], onDelete: SetNull)
+
+  resolvedAt  DateTime?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
   answers     Answer[]
+  assignments DoubtAssignment[]
+  bookmarks   Bookmark[]
+  doubtTags   DoubtTag[]
   reports     Report[]
+
+  @@index([status])
+  @@index([subject])
+  @@index([studentId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([priority])
 }
 
 model Answer {
-  id         String   @id @default(cuid())
+  id         String       @id @default(cuid())
   content    String
-  isAccepted Boolean  @default(false)
-  upvotes    Int      @default(0)
   doubtId    String
-  doubt      Doubt    @relation(fields: [doubtId], references: [id], onDelete: Cascade)
+  doubt      Doubt        @relation(fields: [doubtId], references: [id], onDelete: Cascade)
   authorId   String
-  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  author     User         @relation("UserAnswers", fields: [authorId], references: [id], onDelete: Cascade)
+  status     AnswerStatus @default(PENDING)
+  isAccepted Boolean      @default(false)
+  upvotes    Int          @default(0)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
+  reviews    ModerationReview[]
   reports    Report[]
+
+  @@index([doubtId])
+  @@index([authorId])
+  @@index([status])
+}
+
+model DoubtAssignment {
+  id          String           @id @default(cuid())
+  doubtId     String
+  doubt       Doubt            @relation(fields: [doubtId], references: [id], onDelete: Cascade)
+  helperId    String
+  helper      User             @relation("HelperAssignments", fields: [helperId], references: [id], onDelete: Cascade)
+  status      AssignmentStatus @default(ACTIVE)
+  assignedAt  DateTime         @default(now())
+  completedAt DateTime?
+
+  @@index([doubtId])
+  @@index([helperId])
+  @@index([status])
+}
+
+model ModerationReview {
+  id         String             @id @default(cuid())
+  answerId   String
+  answer     Answer             @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  reviewerId String
+  reviewer   User               @relation("ModeratorReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  decision   ModerationDecision
+  feedback   String?
+  reviewedAt DateTime           @default(now())
+
+  @@index([answerId])
+  @@index([reviewerId])
+  @@index([decision])
+}
+
+model KnowledgeResource {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  content     String
+  subject     String
+  topic       String?
+  sourceUrl   String?
+  authorId    String
+  author      User           @relation("UserKnowledgeResources", fields: [authorId], references: [id], onDelete: Cascade)
+  status      ResourceStatus @default(DRAFT)
+  views       Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status])
+  @@index([subject])
+  @@index([authorId])
 }
 
 model KnowledgeArticle {
@@ -95,9 +249,60 @@ model KnowledgeArticle {
   tags      String?
   views     Int      @default(0)
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User     @relation("UserArticles", fields: [authorId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([subject])
+  @@index([authorId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+  doubtId   String
+  doubt     Doubt    @relation(fields: [doubtId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, doubtId])
+  @@index([userId])
+  @@index([doubtId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  doubts    DoubtTag[]
+
+  @@index([name])
+}
+
+model DoubtTag {
+  id      String @id @default(cuid())
+  doubtId String
+  doubt   Doubt  @relation(fields: [doubtId], references: [id], onDelete: Cascade)
+  tagId   String
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([doubtId, tagId])
+  @@index([doubtId])
+  @@index([tagId])
 }
 
 model Report {
@@ -112,4 +317,9 @@ model Report {
   answer     Answer?      @relation(fields: [answerId], references: [id], onDelete: Cascade)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+
+  @@index([status])
+  @@index([reporterId])
+  @@index([doubtId])
+  @@index([answerId])
 }
