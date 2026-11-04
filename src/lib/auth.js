@@ -1,14 +1,14 @@
+
 /**
  * Authentication helpers and session resolution
  */
 
 export async function getCurrentUser() {
-  // In a full implementation, read session from cookies or JWT / NextAuth session
-  // For development boilerplate, fallback to mock or header-based user
+  // Development user from the seeded database
   return {
-    id: 'user_dev_alex',
+    id: 'seed-user-student-1',
     name: 'Alex Rivera',
-    email: 'alex@doubtbridge.edu',
+    email: 'student1@example.com',
     role: 'STUDENT',
     reputation: 150,
   };
