@@ -1,15 +1,19 @@
 import { prisma } from '@/lib/prisma';
 
 /**
- * Intelligent helper matching algorithm based on subject expertise,
+ * Helper matching algorithm based on subject expertise,
  * active availability, and peer reputation score.
+ *
+ * Matches subjects exactly (after trimming and case normalization)
+ * to avoid false matches (e.g., "Math" matching "Mathematics").
  */
 export async function matchHelpersForDoubt(doubtSubject) {
+  const normalizedSubject = doubtSubject.trim();
+
   const helpers = await prisma.user.findMany({
     where: {
       role: 'HELPER',
       isAvailable: true,
-      subjects: { contains: doubtSubject },
     },
     select: {
       id: true,
@@ -19,18 +23,15 @@ export async function matchHelpersForDoubt(doubtSubject) {
       subjects: true,
       avatar: true,
     },
-    orderBy: { reputation: 'desc' },
-    take: 5,
   });
 
-  return helpers;
-}
+  const normalizedHelpers = helpers.filter((helper) => {
+    if (!helper.subjects) return false;
+    const subjectList = helper.subjects.split(',').map((s) => s.trim().toLowerCase());
+    return subjectList.includes(normalizedSubject.toLowerCase());
+  });
 
-export function calculateHelperMatchScore(helper, subject) {
-  let score = 50;
-  if (helper.subjects && helper.subjects.includes(subject)) {
-    score += 30;
-  }
-  score += Math.min(helper.reputation / 10, 20);
-  return Math.round(score);
+  normalizedHelpers.sort((a, b) => b.reputation - a.reputation);
+
+  return normalizedHelpers.slice(0, 5);
 }

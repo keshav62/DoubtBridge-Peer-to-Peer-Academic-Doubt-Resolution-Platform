@@ -23,3 +23,8 @@ export function canResolveDoubt(user, doubt) {
   if (!user || !doubt) return false;
   return user.id === doubt.studentId || user.role === ROLES.ADMIN;
 }
+
+export function canManageHelperProfile(user) {
+  if (!user) return false;
+  return user.role === ROLES.HELPER;
+}
