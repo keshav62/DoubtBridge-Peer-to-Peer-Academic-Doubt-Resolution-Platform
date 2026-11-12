@@ -52,6 +52,21 @@ const STATUS_MAP = {
     classes: 'bg-[#EDE9FE] text-violet-700 border-violet-200',
     dot: 'bg-violet-500',
   },
+  ANSWERED: {
+    label: 'Answered',
+    classes: 'bg-[#EFF6FF] text-[#2563EB] border-[#BFDBFE]',
+    dot: 'bg-[#2563EB]',
+  },
+  ASSIGNED: {
+    label: 'Assigned',
+    classes: 'bg-amber-50 text-amber-700 border-amber-200',
+    dot: 'bg-amber-500',
+  },
+  CLOSED: {
+    label: 'Closed',
+    classes: 'bg-slate-100 text-slate-600 border-slate-200',
+    dot: 'bg-slate-400',
+  },
   PENDING: {
     label: 'Pending',
     classes: 'bg-amber-50 text-amber-700 border-amber-200',

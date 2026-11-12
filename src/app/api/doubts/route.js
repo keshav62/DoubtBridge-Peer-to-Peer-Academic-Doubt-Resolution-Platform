@@ -29,7 +29,7 @@ export async function GET(request) {
     const search = searchParams.get('q') || undefined;
     const mine = searchParams.get('mine') === 'true';
 
-    const validStatuses = ['OPEN', 'CLAIMED', 'RESOLVED', 'CLOSED'];
+    const validStatuses = ['OPEN', 'ASSIGNED', 'CLAIMED', 'ANSWERED', 'RESOLVED', 'CLOSED'];
 
     if (status && !validStatuses.includes(status)) {
       return NextResponse.json(
@@ -43,6 +43,7 @@ export async function GET(request) {
       status,
       subject,
       search,
+      sort: searchParams.get('sort') || undefined,
       limit: searchParams.get('limit') || 20,
       offset: searchParams.get('offset') || 0,
     });

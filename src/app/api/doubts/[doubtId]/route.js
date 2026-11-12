@@ -15,7 +15,16 @@ import { getCurrentUser } from '@/lib/auth';
 export async function GET(request, { params }) {
   try {
     const { doubtId } = await params;
-    const doubt = await getDoubtById(doubtId);
+
+    if (!doubtId || typeof doubtId !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Doubt ID is required.' },
+        { status: 400 }
+      );
+    }
+
+    const currentUser = await getCurrentUser();
+    const doubt = await getDoubtById(doubtId, currentUser);
 
     if (!doubt) {
       return NextResponse.json(
@@ -24,7 +33,18 @@ export async function GET(request, { params }) {
       );
     }
 
-    return NextResponse.json({ success: true, doubt });
+    return NextResponse.json({
+      success: true,
+      doubt,
+      currentUser: currentUser
+        ? {
+            id: currentUser.id,
+            name: currentUser.name,
+            role: currentUser.role,
+            reputation: currentUser.reputation,
+          }
+        : null,
+    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error.message },
