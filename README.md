@@ -12,6 +12,7 @@
   - [2. Live Doubt Listing, Search & Filters (Task 1)](#2-live-doubt-listing-search--filters-task-1)
   - [3. Live Doubt Detail, Answer Submission & Moderation (Task 2)](#3-live-doubt-detail-answer-submission--moderation-task-2)
   - [4. Live Dashboard, Analytics & Role-Based Statistics (Task 3)](#4-live-dashboard-analytics--role-based-statistics-task-3)
+  - [5. Peer Helper Service, Matching Engine & Assignment Management (Task 4)](#5-peer-helper-service-matching-engine--assignment-management-task-4)
 - [Component & Service Architecture](#-component--service-architecture)
 - [REST API Reference](#-rest-api-reference)
 - [Role-Based Access Control (RBAC) & Workflows](#-role-based-access-control-rbac--workflows)
@@ -120,6 +121,34 @@ Converted the mock dashboard into a database-backed command center:
 
 ---
 
+### 5. Peer Helper Service, Matching Engine & Assignment Management (Task 4)
+Engineered an end-to-end academic tutoring and assignment orchestration engine:
+- **Helper Profile & Availability Management**:
+  - Profile activation allows students to register as peer helpers with biography, qualified academic disciplines, and specific topic expertise.
+  - Live availability toggle (`Available` vs `Paused`) synchronized across `User` and `HelperProfile` in PostgreSQL.
+  - When paused, helpers are excluded from matched recommendations while active assignments remain intact.
+- **Rule-Based Matching Engine (100-Point Rubric)**:
+  - **Subject Match**: `+30 points` when doubt's subject matches helper's qualified disciplines.
+  - **Topic Match**: `+50 points` when doubt's topic or keywords match helper's topic specializations.
+  - **Availability**: `+20 points` when helper is actively accepting new assignments.
+  - **Invariants Enforced**: Excludes unavailable helpers, excludes author's own doubts (no self-help), enforces maximum 5 active assignments workload limit.
+  - Returns transparent matching breakdown reasons (e.g., `["Subject match: Algorithms (+30)", "Topic match: Graph Theory (+50)", "Helper is available (+20)"]`).
+- **Dynamic Helper Feed & Discovery**:
+  - Ranks open, claimable questions by match score with urgency and recency tie-breakers.
+  - Includes multi-criteria filtering by subject, topic, urgency, difficulty, and sort order.
+- **Concurrency-Safe Atomic Doubt Claiming**:
+  - Executed inside an atomic Prisma `$transaction` with conditional updates (`where: { id, status: 'OPEN', helperId: null }`).
+  - Guarantees that two helpers claiming the same question simultaneously receive immediate conflict protection (`409 Conflict`).
+  - Atomically creates `DoubtAssignment` (`status: ACTIVE`) and transitions doubt to `status: CLAIMED`.
+- **Assignment Lifecycle & Doubt Reopening**:
+  - Full lifecycle tracking: `ACTIVE`, `COMPLETED`, `CANCELLED`.
+  - Helpers can release/cancel an active assignment, which atomically sets assignment `CANCELLED` and safely reopens the parent doubt to `status: OPEN` with `helperId: null` for the peer community.
+- **Tabbed Peer Helper Hub & Dedicated Route**:
+  - `/helpers`: Unified interface with 4 tabs: "Matched Open Doubts", "My Assignments", "Helper Profile & Availability", and "Peer Directory".
+  - `/helpers/assignments`: Dedicated assignments management page.
+
+---
+
 ## 🧩 Component & Service Architecture
 
 ```
@@ -130,12 +159,17 @@ src/
 │   │   ├── dashboard/
 │   │   │   ├── layout.jsx                    # Metadata provider for dashboard
 │   │   │   └── page.jsx                      # Live role-based dashboard, analytics & feeds
-│   │   └── doubts/
-│   │       ├── layout.jsx                    # Metadata provider for doubt routes
-│   │       ├── page.jsx                      # Live doubt listing, filters, feed toggle, pagination
-│   │       ├── [doubtId]/
-│   │       │   └── page.jsx                  # Live doubt detail, answer list, and submission form
-│   │       └── new/                          # Ask a Doubt creation form
+│   │   ├── doubts/
+│   │   │   ├── layout.jsx                    # Metadata provider for doubt routes
+│   │   │   ├── page.jsx                      # Live doubt listing, filters, feed toggle, pagination
+│   │   │   ├── [doubtId]/
+│   │   │   │   └── page.jsx                  # Live doubt detail, answer list, and submission form
+│   │   │   └── new/                          # Ask a Doubt creation form
+│   │   └── helpers/
+│   │       ├── layout.jsx                    # Metadata provider for helper hub
+│   │       ├── page.jsx                      # Tabbed Helper Hub (Feed, Assignments, Profile, Directory)
+│   │       └── assignments/
+│   │           └── page.jsx                  # Dedicated helper assignments management
 │   ├── api/
 │   │   ├── dashboard/
 │   │   │   ├── overview/route.js             # GET role-specific metrics & live activity
@@ -151,7 +185,14 @@ src/
 │   │   │       │       ├── accept/route.js   # POST/PATCH (accept approved solution)
 │   │   │       │       ├── review/route.js   # POST/PATCH (moderator approve/reject)
 │   │   │       │       └── upvote/route.js   # POST (upvote answer)
-│   │   │       └── claim/route.js            # POST (claim doubt by peer helper)
+│   │   │       └── claim/route.js            # POST (concurrency-safe atomic claim)
+│   │   ├── helpers/
+│   │   │   ├── route.js                      # GET peer helpers directory
+│   │   │   ├── profile/route.js              # GET / PUT helper profile & availability
+│   │   │   ├── feed/route.js                 # GET matched & ranked open doubts
+│   │   │   └── assignments/
+│   │   │       ├── route.js                  # GET helper assignments
+│   │   │       └── [assignmentId]/route.js   # PATCH cancel / complete assignment
 │   │   └── health/database/route.js          # GET database connectivity health-check
 │   └── not-found.jsx                         # Global 404 handler
 ├── components/
@@ -173,6 +214,13 @@ src/
 │   │   ├── AnswerForm.jsx                    # Answer contribution form
 │   │   ├── AnswerList.jsx                    # Answers list container & solution highlights
 │   │   └── AnswerStatusBadge.jsx             # Status badge for answers (APPROVED, PENDING, REJECTED)
+│   ├── helpers/
+│   │   ├── HelperFeedList.jsx                # Matched open doubts feed with claim buttons
+│   │   ├── HelperAssignmentsList.jsx         # Helper assignments with status filters & actions
+│   │   ├── HelperProfileCard.jsx             # Profile summary, availability toggle, and stats
+│   │   ├── HelperProfileForm.jsx             # Profile edit / activation modal
+│   │   ├── HelperCard.jsx                    # Directory helper card
+│   │   └── MatchScoreBadge.jsx               # Score badge with interactive breakdown tooltip
 │   └── ui/                                   # Shared design system components (Badge, Button, Card, EmptyState, Input)
 ├── features/
 │   ├── dashboard/
@@ -181,6 +229,11 @@ src/
 │   │   ├── service.js                        # Doubt queries, search, filtering, and mutations
 │   │   ├── actions.js                        # Server actions for doubt operations
 │   │   └── validation.js                     # Doubt input sanitizer and validation rules
+│   ├── helpers/
+│   │   ├── service.js                        # Profile, directory, atomic claim & assignment lifecycle
+│   │   ├── matching.js                       # 100-pt rule-based matching engine
+│   │   ├── actions.js                        # Helper actions
+│   │   └── validation.js                     # Input sanitizer for helper profile and actions
 │   └── answers/
 │       ├── service.js                        # Transactional answer creation, acceptance, and review
 │       └── actions.js                        # Server actions for answers

@@ -119,3 +119,4 @@ export default function HelperCard({ helper, onRequestHelp }) {
     </div>
   );
 }
+
