@@ -20,6 +20,7 @@ export async function getDoubts({
   status,
   subject,
   search,
+  sort,
   limit = 20,
   offset = 0,
 } = {}) {
@@ -27,14 +28,14 @@ export async function getDoubts({
 
   if (studentId) where.studentId = studentId;
   if (status) where.status = status;
-  if (subject) where.subject = { contains: subject };
+  if (subject) where.subject = { contains: subject, mode: 'insensitive' };
 
   // Search in title, description and tags
   if (search) {
     where.OR = [
-      { title: { contains: search } },
-      { description: { contains: search } },
-      { tags: { contains: search } },
+      { title: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
+      { tags: { contains: search, mode: 'insensitive' } },
     ];
   }
 
@@ -42,12 +43,20 @@ export async function getDoubts({
   const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 50);
   const safeOffset = Math.max(Number(offset) || 0, 0);
 
+  // Determine sort order
+  let orderBy = { createdAt: 'desc' };
+  if (sort === 'oldest') {
+    orderBy = { createdAt: 'asc' };
+  } else if (sort === 'urgency') {
+    orderBy = [{ urgency: 'desc' }, { createdAt: 'desc' }];
+  }
+
   // Get doubts and total count together
   const [doubts, total] = await Promise.all([
     prisma.doubt.findMany({
       where,
       include: doubtIncludes,
-      orderBy: { createdAt: 'desc' },
+      orderBy,
       take: safeLimit,
       skip: safeOffset,
     }),
@@ -62,9 +71,11 @@ export async function getDoubts({
   };
 }
 
-// Get one doubt with its answers
-export async function getDoubtById(doubtId) {
-  return prisma.doubt.findUnique({
+// Get one doubt with its answers and visibility moderation rules
+export async function getDoubtById(doubtId, currentUser = null) {
+  if (!doubtId || typeof doubtId !== 'string') return null;
+
+  const doubt = await prisma.doubt.findUnique({
     where: { id: doubtId },
     include: {
       ...doubtIncludes,
@@ -77,7 +88,21 @@ export async function getDoubtById(doubtId) {
               role: true,
               reputation: true,
               avatar: true,
+              avatarUrl: true,
+              department: true,
             },
+          },
+          reviews: {
+            select: {
+              id: true,
+              decision: true,
+              feedback: true,
+              reviewedAt: true,
+              reviewer: {
+                select: { id: true, name: true, role: true },
+              },
+            },
+            orderBy: { reviewedAt: 'desc' },
           },
         },
         orderBy: [
@@ -88,6 +113,32 @@ export async function getDoubtById(doubtId) {
       },
     },
   });
+
+  if (!doubt) return null;
+
+  // Answer moderation visibility filtering
+  const isModeratorOrAdmin =
+    currentUser && (currentUser.role === 'MODERATOR' || currentUser.role === 'ADMIN');
+  const isDoubtOwner = currentUser && currentUser.id === doubt.studentId;
+
+  doubt.answers = doubt.answers.filter((ans) => {
+    // 1. Approved answers are visible to all users
+    if (ans.status === 'APPROVED') return true;
+
+    // 2. Moderators and admins see all answers (to review pending/rejected)
+    if (isModeratorOrAdmin) return true;
+
+    // 3. Authors see their own answer regardless of moderation state
+    if (currentUser && ans.authorId === currentUser.id) return true;
+
+    // 4. Doubt owners see pending answers (so they know an answer arrived)
+    if (isDoubtOwner && ans.status === 'PENDING') return true;
+
+    // By default, hide unapproved answers
+    return false;
+  });
+
+  return doubt;
 }
 
 // Create a new doubt
