@@ -33,3 +33,26 @@ export function canAcceptAnswer(user, doubt, answer) {
   if (answer.authorId === user.id && !isAdmin) return false;
   return true;
 }
+
+export function canCreateKnowledge(user) {
+  return Boolean(user && user.id);
+}
+
+export function canEditKnowledge(user, resource) {
+  if (!user || !resource) return false;
+  return user.id === resource.authorId || user.role === ROLES.ADMIN;
+}
+
+export function canDeleteKnowledge(user, resource) {
+  if (!user || !resource) return false;
+  return user.id === resource.authorId || user.role === ROLES.ADMIN;
+}
+
+export function canReviewKnowledge(user, resource) {
+  if (!user || !resource) return false;
+  const isPrivileged = user.role === ROLES.MODERATOR || user.role === ROLES.ADMIN;
+  if (!isPrivileged) return false;
+  // Authors cannot review/approve their own submissions unless Admin
+  if (user.id === resource.authorId && user.role !== ROLES.ADMIN) return false;
+  return true;
+}

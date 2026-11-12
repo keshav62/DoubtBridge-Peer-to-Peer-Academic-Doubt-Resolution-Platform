@@ -13,6 +13,7 @@
   - [3. Live Doubt Detail, Answer Submission & Moderation (Task 2)](#3-live-doubt-detail-answer-submission--moderation-task-2)
   - [4. Live Dashboard, Analytics & Role-Based Statistics (Task 3)](#4-live-dashboard-analytics--role-based-statistics-task-3)
   - [5. Peer Helper Service, Matching Engine & Assignment Management (Task 4)](#5-peer-helper-service-matching-engine--assignment-management-task-4)
+  - [6. Academic Knowledge Hub, Article Library & Resource Management (Task 5)](#6-academic-knowledge-hub-article-library--resource-management-task-5)
 - [Component & Service Architecture](#-component--service-architecture)
 - [REST API Reference](#-rest-api-reference)
 - [Role-Based Access Control (RBAC) & Workflows](#-role-based-access-control-rbac--workflows)
@@ -149,6 +150,40 @@ Engineered an end-to-end academic tutoring and assignment orchestration engine:
 
 ---
 
+### 6. Academic Knowledge Hub, Article Library & Resource Management (Task 5)
+Engineered a comprehensive peer academic repository and publishing system:
+- **Database-Driven Knowledge Hub**:
+  - Replaced hardcoded sample articles with live PostgreSQL data via `KnowledgeResource` and `Bookmark` models.
+  - Features dynamic subject tags with live database counts across all academic disciplines.
+  - Highlighted **Featured Guide** banner dynamically showcases the most popular peer guide by views and bookmarks.
+- **Search, Filtering & Sorting Engine**:
+  - 350ms debounced search scanning title, summary, content, subject, and topic specializations.
+  - Multi-discipline filtering with custom subject pills and counts.
+  - Sorting by Newest, Most Viewed, Oldest, and Alphabetical.
+  - Full server-side pagination, skeleton states, error retry, and empty states.
+- **Full Article Reader (`/knowledge/[articleId]`)**:
+  - Detailed reader view with author credentials (reputation, department, role).
+  - Safe formatted content rendering for headers, bullet points, blockquotes, and code blocks without raw untrusted HTML.
+  - External academic citation source link.
+  - Atomic session-based view counter increment (`POST /api/knowledge/:articleId/view`).
+  - Rule-based **Related Articles** recommendation shelf matching subject and topic.
+- **Academic Resource Submission & Author Editing**:
+  - Form route `/knowledge/new` and editor `/knowledge/[articleId]/edit` with client and server-side validation.
+  - Title, subject, topic, summary, content, and external source URL fields.
+  - Authors can save as `DRAFT` or submit for peer review (`PENDING`).
+  - Strict ownership guard: authors can edit their own submissions; non-authors are forbidden with HTTP 403.
+- **Peer Resource Moderation Workflow**:
+  - Lifecycle: `DRAFT → PENDING → APPROVED / REJECTED`.
+  - Public hub only renders `APPROVED` resources (drafts and pending items remain isolated to author and staff).
+  - Dedicated Moderation Queue tab & review banner for `MODERATOR` and `ADMIN` roles (`POST /api/knowledge/:articleId/review`).
+  - Invariant: Authors cannot review or approve their own submissions; students cannot moderate.
+- **Article Bookmarking & Personal Library**:
+  - Polymorphic enhancement to `Bookmark` model supporting both `doubtId` and `resourceId`.
+  - Optimistic toggle button on all article cards and detail views (`POST /api/knowledge/:articleId/bookmark`).
+  - Dedicated saved articles library at `/knowledge/bookmarks` and tab on the main hub.
+
+---
+
 ## 🧩 Component & Service Architecture
 
 ```
@@ -165,11 +200,22 @@ src/
 │   │   │   ├── [doubtId]/
 │   │   │   │   └── page.jsx                  # Live doubt detail, answer list, and submission form
 │   │   │   └── new/                          # Ask a Doubt creation form
-│   │   └── helpers/
-│   │       ├── layout.jsx                    # Metadata provider for helper hub
-│   │       ├── page.jsx                      # Tabbed Helper Hub (Feed, Assignments, Profile, Directory)
-│   │       └── assignments/
-│   │           └── page.jsx                  # Dedicated helper assignments management
+│   │   ├── helpers/
+│   │   │   ├── layout.jsx                    # Metadata provider for helper hub
+│   │   │   ├── page.jsx                      # Tabbed Helper Hub (Feed, Assignments, Profile, Directory)
+│   │   │   └── assignments/
+│   │   │       └── page.jsx                  # Dedicated helper assignments management
+│   │   └── knowledge/
+│   │       ├── layout.jsx                    # Metadata provider for knowledge hub
+│   │       ├── page.jsx                      # Knowledge Hub (Featured, Popular, Subject Pills, Search)
+│   │       ├── new/
+│   │       │   └── page.jsx                  # Academic article submission form
+│   │       ├── bookmarks/
+│   │       │   └── page.jsx                  # Saved articles & revision library
+│   │       └── [articleId]/
+│   │           ├── page.jsx                  # Full article reader & related articles
+│   │           └── edit/
+│   │               └── page.jsx              # Author edit article route
 │   ├── api/
 │   │   ├── dashboard/
 │   │   │   ├── overview/route.js             # GET role-specific metrics & live activity
@@ -221,6 +267,16 @@ src/
 │   │   ├── HelperProfileForm.jsx             # Profile edit / activation modal
 │   │   ├── HelperCard.jsx                    # Directory helper card
 │   │   └── MatchScoreBadge.jsx               # Score badge with interactive breakdown tooltip
+│   ├── knowledge/
+│   │   ├── KnowledgeCard.jsx                 # Article card with metadata, read time & bookmark button
+│   │   ├── KnowledgeSearch.jsx               # 350ms debounced search bar
+│   │   ├── KnowledgeFilters.jsx              # Subject pills with dynamic counts & sort dropdown
+│   │   ├── KnowledgeList.jsx                 # Article grid with pagination & loading skeletons
+│   │   ├── KnowledgeArticleDetail.jsx        # Full article reader with safe content formatting
+│   │   ├── KnowledgeArticleForm.jsx          # Article submission and editor form with validation
+│   │   ├── KnowledgeModerationQueue.jsx      # Moderation review queue with inline approve/reject
+│   │   ├── BookmarkButton.jsx                # Optimistic bookmark toggle button
+│   │   └── RelatedArticles.jsx               # Rule-based related articles recommendation shelf
 │   └── ui/                                   # Shared design system components (Badge, Button, Card, EmptyState, Input)
 ├── features/
 │   ├── dashboard/
@@ -276,6 +332,21 @@ src/
 | `POST` | `/api/doubts/:doubtId/answers/:answerId/review` | `{ "decision": "APPROVED", "feedback": "..." }` | Approve or reject an answer (`MODERATOR` / `ADMIN` only) |
 | `POST` | `/api/doubts/:doubtId/answers/:answerId/upvote` | — | Upvote an answer |
 | `PATCH`| `/api/doubts/:doubtId/answers/:answerId` | `{ "action": "accept" \| "review" \| "upvote" }` | Unified action dispatcher |
+
+### Knowledge Hub & Academic Resource Endpoints
+
+| Method | Endpoint | Query Parameters / Payload | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/knowledge` | `q`, `subject`, `topic`, `sort`, `mine`, `limit`, `offset` | List approved resources with search, subject filter, and dynamic counts |
+| `POST` | `/api/knowledge` | `{ "title", "subject", "topic", "description", "content", "sourceUrl", "status" }` | Submit new resource (`DRAFT` or `PENDING`) |
+| `GET` | `/api/knowledge/:articleId` | — | Retrieve single article details and related recommendations |
+| `PATCH`| `/api/knowledge/:articleId` | `{ "title", "subject", "topic", "description", "content" }` | Update article (author or admin only) |
+| `DELETE`|`/api/knowledge/:articleId` | — | Delete article (author or admin only) |
+| `POST` | `/api/knowledge/:articleId/bookmark` | — | Toggle bookmark on article (creates or removes bookmark) |
+| `GET` | `/api/knowledge/bookmarks` | `limit`, `offset` | List current user's saved academic resources |
+| `GET` | `/api/knowledge/moderation` | `limit`, `offset` | List pending resources awaiting moderation review |
+| `POST` | `/api/knowledge/:articleId/review` | `{ "decision": "APPROVED" \| "REJECTED", "feedback": "..." }` | Submit moderation review (staff only, no self-review) |
+| `POST` | `/api/knowledge/:articleId/view` | — | Increment view counter atomically |
 
 ---
 
