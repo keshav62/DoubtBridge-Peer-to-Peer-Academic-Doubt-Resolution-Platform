@@ -1,23 +1,32 @@
 import { NextResponse } from 'next/server';
-import { claimDoubtRecord } from '@/features/doubts/service';
+import { claimDoubtRecord } from '@/features/helpers/service';
 import { getCurrentUser } from '@/lib/auth';
-import { canClaimDoubt } from '@/lib/permissions';
 
 export async function POST(request, { params }) {
   try {
     const { doubtId } = await params;
     const user = await getCurrentUser();
 
-    if (!user || !canClaimDoubt(user)) {
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Only authorized peer helpers can claim doubts.' },
-        { status: 403 }
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
-    const updated = await claimDoubtRecord(doubtId, user.id);
-    return NextResponse.json({ success: true, doubt: updated });
+    const result = await claimDoubtRecord(doubtId, user);
+
+    return NextResponse.json({
+      success: true,
+      ...result,
+      message: 'Doubt successfully claimed. You can now assist the student with this question.',
+    });
   } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Error claiming doubt:', error);
+    const status = error.status || 500;
+    return NextResponse.json(
+      { success: false, error: error.message || 'Failed to claim doubt' },
+      { status }
+    );
   }
 }
