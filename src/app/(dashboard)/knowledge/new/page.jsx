@@ -8,3 +8,4 @@ export const metadata = {
 export default function NewKnowledgeArticlePage() {
   return <KnowledgeArticleForm isEdit={false} />;
 }
+

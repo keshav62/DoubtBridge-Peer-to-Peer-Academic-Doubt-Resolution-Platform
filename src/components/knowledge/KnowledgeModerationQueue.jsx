@@ -331,3 +331,4 @@ export default function KnowledgeModerationQueue({ currentUser }) {
     </div>
   );
 }
+

@@ -61,3 +61,4 @@ export default function EditKnowledgeArticlePage() {
 
   return <KnowledgeArticleForm initialData={resource} isEdit={true} />;
 }
+
