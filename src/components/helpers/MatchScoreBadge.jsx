@@ -53,3 +53,4 @@ export default function MatchScoreBadge({ score = 0, reasons = [] }) {
     </div>
   );
 }
+

@@ -236,6 +236,8 @@ model KnowledgeResource {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  bookmarks   Bookmark[]
+
   @@index([status])
   @@index([subject])
   @@index([authorId])
@@ -258,16 +260,20 @@ model KnowledgeArticle {
 }
 
 model Bookmark {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation("UserBookmarks", fields: [userId], references: [id], onDelete: Cascade)
-  doubtId   String
-  doubt     Doubt    @relation(fields: [doubtId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id         String             @id @default(cuid())
+  userId     String
+  user       User               @relation("UserBookmarks", fields: [userId], references: [id], onDelete: Cascade)
+  doubtId    String?
+  doubt      Doubt?             @relation(fields: [doubtId], references: [id], onDelete: Cascade)
+  resourceId String?
+  resource   KnowledgeResource? @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now())
 
   @@unique([userId, doubtId])
+  @@unique([userId, resourceId])
   @@index([userId])
   @@index([doubtId])
+  @@index([resourceId])
 }
 
 model Notification {
