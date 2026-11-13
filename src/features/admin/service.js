@@ -2,15 +2,71 @@ import { prisma } from '@/lib/prisma';
 import { ROLES } from '@/lib/permissions';
 
 /**
+ * Redacts any sensitive keys (passwords, tokens, cookies, secrets) from metadata before storing.
+ */
+function sanitizeAuditMetadata(metadata) {
+  if (!metadata) return null;
+  let parsed = metadata;
+  if (typeof metadata === 'string') {
+    try {
+      parsed = JSON.parse(metadata);
+    } catch {
+      return metadata;
+    }
+  }
+  if (typeof parsed !== 'object' || parsed === null) return JSON.stringify(parsed);
+
+  const redactKeys = ['password', 'passwordhash', 'token', 'secret', 'cookie', 'session', 'apikey', 'auth'];
+  const sanitized = Array.isArray(parsed) ? [...parsed] : { ...parsed };
+
+  for (const key of Object.keys(sanitized)) {
+    if (redactKeys.some((k) => key.toLowerCase().includes(k))) {
+      sanitized[key] = '[REDACTED]';
+    } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+      sanitized[key] = JSON.parse(sanitizeAuditMetadata(sanitized[key]));
+    }
+  }
+  return JSON.stringify(sanitized);
+}
+
+/**
  * Record an append-only administrative audit log.
  * Never stores passwords, tokens, or private secrets.
+ * Retains actor identity snapshot (email, name, role) for audit survival.
  */
-export async function recordAuditLog({ actorId, action, targetType, targetId, metadata = null }) {
+export async function recordAuditLog({
+  actorId = null,
+  actor = null,
+  action,
+  targetType,
+  targetId,
+  metadata = null,
+}) {
   try {
-    const metaStr = metadata ? (typeof metadata === 'string' ? metadata : JSON.stringify(metadata)) : null;
+    const finalActorId = actorId || actor?.id || null;
+    let actorEmail = actor?.email || null;
+    let actorName = actor?.name || null;
+    let actorRole = actor?.role || null;
+
+    if (!actorEmail && finalActorId) {
+      const u = await prisma.user.findUnique({
+        where: { id: finalActorId },
+        select: { email: true, name: true, role: true },
+      });
+      if (u) {
+        actorEmail = u.email;
+        actorName = u.name;
+        actorRole = u.role;
+      }
+    }
+
+    const metaStr = sanitizeAuditMetadata(metadata);
     return await prisma.auditLog.create({
       data: {
-        actorId,
+        actorId: finalActorId,
+        actorEmail,
+        actorName,
+        actorRole,
         action,
         targetType,
         targetId: String(targetId),
@@ -361,6 +417,9 @@ export async function updateUserRole({ actor, targetUserId, newRole }) {
     await tx.auditLog.create({
       data: {
         actorId: actor.id,
+        actorEmail: actor.email,
+        actorName: actor.name,
+        actorRole: actor.role,
         action: 'USER_ROLE_CHANGE',
         targetType: 'USER',
         targetId: targetUserId,
@@ -423,6 +482,9 @@ export async function updateUserStatus({ actor, targetUserId, isActive, suspensi
     await tx.auditLog.create({
       data: {
         actorId: actor.id,
+        actorEmail: actor.email,
+        actorName: actor.name,
+        actorRole: actor.role,
         action: isActive ? 'USER_ACTIVATE' : 'USER_SUSPEND',
         targetType: 'USER',
         targetId: targetUserId,
@@ -596,6 +658,9 @@ export async function reviewAdminReport({ actor, reportId, status, resolutionNot
     await tx.auditLog.create({
       data: {
         actorId: actor.id,
+        actorEmail: actor.email,
+        actorName: actor.name,
+        actorRole: actor.role,
         action: 'REPORT_REVIEW',
         targetType: 'REPORT',
         targetId: reportId,
@@ -656,3 +721,4 @@ export async function getAdminAuditLogs({
     },
   };
 }
+

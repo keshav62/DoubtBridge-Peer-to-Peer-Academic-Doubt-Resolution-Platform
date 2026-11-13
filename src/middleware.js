@@ -8,9 +8,27 @@ import { getIronSession } from 'iron-session';
  * Uses iron-session to verify the signed session cookie server-side.
  */
 
+function getSessionPassword() {
+  const secret = process.env.SESSION_SECRET;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isProduction) {
+    if (!secret || secret.length < 32 || secret.includes('changeme') || secret.includes('replace_this')) {
+      throw new Error(
+        'CRITICAL CONFIGURATION ERROR: SESSION_SECRET is unset or insecure in production middleware.'
+      );
+    }
+    return secret;
+  }
+
+  return secret || 'development_fallback_secret_must_be_at_least_32_chars_long!';
+}
+
 const SESSION_OPTIONS = {
   cookieName: 'doubtbridge_session',
-  password: process.env.SESSION_SECRET || 'changeme_at_least_32_chars_long_!!',
+  get password() {
+    return getSessionPassword();
+  },
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,

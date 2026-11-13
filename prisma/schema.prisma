@@ -337,8 +337,11 @@ model Report {
 
 model AuditLog {
   id         String   @id @default(cuid())
-  actorId    String
-  actor      User     @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: Cascade)
+  actorId    String?
+  actor      User?    @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+  actorEmail String?
+  actorName  String?
+  actorRole  String?
   action     String   // e.g. "USER_ROLE_CHANGE", "USER_SUSPEND", "USER_ACTIVATE", "REPORT_REVIEW", "ADMIN_MODERATION"
   targetType String   // e.g. "USER", "REPORT", "ANSWER", "RESOURCE", "DOUBT"
   targetId   String

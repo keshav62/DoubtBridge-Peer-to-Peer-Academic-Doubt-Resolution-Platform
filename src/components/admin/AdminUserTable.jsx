@@ -274,3 +274,4 @@ export default function AdminUserTable({ users, loading, onUserUpdated, currentA
     </>
   );
 }
+

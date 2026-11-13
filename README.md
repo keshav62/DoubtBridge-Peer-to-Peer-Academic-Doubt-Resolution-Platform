@@ -23,6 +23,18 @@
 - [Project Directory Structure](#-project-directory-structure)
 - [Getting Started & Local Setup](#-getting-started--local-setup)
 - [Verification & Testing](#-verification--testing)
+- [Comprehensive Documentation Suite](#-comprehensive-documentation-suite)
+
+---
+
+## 📚 Comprehensive Documentation Suite
+
+For exhaustive technical references, see the dedicated architecture, API, security, and deployment guides:
+
+- [docs/ARCHITECTURE.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/ARCHITECTURE.md) — System design, module hierarchy, ER diagrams, data flows, and state machines.
+- [docs/API.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/API.md) — Complete REST API catalog with methods, endpoints, query/body payloads, roles, and status codes.
+- [docs/SECURITY.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/SECURITY.md) — Threat model, session crypto, RBAC policy, IDOR defense, rate limiting, and forensic audit log retention.
+- [docs/DEPLOYMENT.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/DEPLOYMENT.md) — Production setup for Vercel and Node.js, Prisma migrations, and post-deployment checklist.
 
 ---
 
@@ -638,6 +650,22 @@ A comprehensive 35-assertion automated test suite validates administrator teleme
 - ✅ **Append-Only Audit History**: Validates immutable chronological audit log queries with administrator attribution and structured metadata.
 
 **Result:** `ADMIN CONTROL CENTER TEST SUMMARY: 35 PASSED, 0 FAILED`
+
+### 8. Final Release-Readiness & Automated Test Suite (Task 9)
+An end-to-end automated test runner powered by Node.js built-in test runner (`npm test`) executes 73 assertions across unit and database integration suites covering Tasks 1–8:
+- ✅ **RBAC Primitives & Guards** (14 unit assertions): Strict role identification, structured 401/403 HTTP error throwing, and permission predicates.
+- ✅ **Rate Limiting Engine** (2 unit assertions): Sliding window threshold enforcement and trusted client IP resolution from reverse proxy headers.
+- ✅ **Session Security & Secret Validation** (2 unit assertions): Verifies that production strictly terminates if `SESSION_SECRET` is unset, `< 32` characters, or uses known placeholders.
+- ✅ **Auth & Password Security** (4 integration assertions): Bcrypt cost factor 12 hashing, public registration role sanitization, unique email enforcement, and suspended user exclusion.
+- ✅ **Doubts & Answers Lifecycle** (4 integration assertions): Doubt creation, answer submission in `PENDING` state, moderator approval, solution acceptance, doubt resolution, and helper `+25` reputation increment.
+- ✅ **Helper Matching & Atomic Claims** (5 integration assertions): 100-point scoring algorithm, availability toggling, atomic doubt claiming, duplicate concurrent claim prevention, and assignment cancellation with doubt reopen.
+- ✅ **Knowledge Hub & Bookmarks** (6 integration assertions): Draft creation, submission for review, author self-review block (403), moderator approval, bookmarking, and un-bookmarking.
+- ✅ **Notifications Activity Center** (6 integration assertions): Event dispatchers, recipient unread counts, owner-only query isolation, IDOR prevention, mark-as-read, mark-all-read, and deletion.
+- ✅ **Admin Control Center & Audit Hardening** (7 integration assertions): Platform overview stats, user role promotion, self-role modification block (403), account suspension, self-suspension block (403), report review with resolution notes, and automated secret scrubber redacting passwords/tokens in metadata.
+- ✅ **Cross-User IDOR Defense** (6 integration assertions): Verifies 403 Forbidden across cross-user doubt editing, notification manipulation, assignment cancellation, and unauthorized review actions.
+- ✅ **Database Integrity & Audit Retention** (2 integration assertions): Verifies that deleting an administrator nullifies `actorId` (`ON DELETE SET NULL`) while permanently retaining `actorEmail`, `actorName`, and `actorRole` snapshots. Unique constraint prevents duplicate bookmarks.
+
+**Result:** `FINAL TEST SUITE SUMMARY: 73 PASSED, 0 FAILED (100% Pass Rate across 14 test suites)`
 
 ---
 
