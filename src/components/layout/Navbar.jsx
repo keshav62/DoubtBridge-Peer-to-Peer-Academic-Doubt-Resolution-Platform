@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Bell, ChevronDown, Menu } from 'lucide-react';
+import { Search, ChevronDown, Menu } from 'lucide-react';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 /**
  * Navbar props:
@@ -65,13 +66,8 @@ export default function Navbar({ onMenuClick }) {
       {/* ── Right: notifications + user ─────────────────────── */}
       <div className="flex flex-shrink-0 items-center gap-2">
 
-        {/* Bell */}
-        <button
-          aria-label="View notifications"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-[#64748B] transition-colors hover:border-[#E5EAF2] hover:bg-[#F8FAFC] hover:text-[#2563EB] focus-visible:outline-2 focus-visible:outline-[#2563EB]"
-        >
-          <Bell size={18} />
-        </button>
+        {/* Dynamic Notification Bell */}
+        <NotificationBell />
 
         {/* Vertical separator */}
         <div aria-hidden="true" className="mx-0.5 h-[22px] w-px bg-[#E5EAF2]" />

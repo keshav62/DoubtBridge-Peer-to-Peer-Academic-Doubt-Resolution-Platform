@@ -14,6 +14,7 @@
   - [4. Live Dashboard, Analytics & Role-Based Statistics (Task 3)](#4-live-dashboard-analytics--role-based-statistics-task-3)
   - [5. Peer Helper Service, Matching Engine & Assignment Management (Task 4)](#5-peer-helper-service-matching-engine--assignment-management-task-4)
   - [6. Academic Knowledge Hub, Article Library & Resource Management (Task 5)](#6-academic-knowledge-hub-article-library--resource-management-task-5)
+  - [7. Real-Time Notifications & Activity Center (Task 6)](#7-real-time-notifications--activity-center-task-6)
 - [Component & Service Architecture](#-component--service-architecture)
 - [REST API Reference](#-rest-api-reference)
 - [Role-Based Access Control (RBAC) & Workflows](#-role-based-access-control-rbac--workflows)
@@ -184,6 +185,34 @@ Engineered a comprehensive peer academic repository and publishing system:
 
 ---
 
+### 7. Real-Time Notifications & Activity Center (Task 6)
+Engineered an event-driven notification dispatch pipeline and centralized activity center:
+- **Prisma Schema Enhancement**:
+  - Enhanced `Notification` model with an optional `link String?` column allowing direct one-click navigation to the target doubt, answer, or learning resource.
+- **Centralized Event-Driven Notification Service**:
+  - Centralized module (`src/features/notifications/service.js`) handling creation, querying, unread counters, mark as read, mark all read, and deletion.
+  - Full atomic `$transaction` integration ensures that notifications and the underlying workflow events commit together or roll back cleanly.
+  - Invariant enforcement: Self-notification prevention (actors never receive notifications for their own actions).
+- **Core Workflow Event Triggers**:
+  - **Answer Submitted**: Automatically notifies doubt creator (`ANSWER_SUBMITTED`).
+  - **Answer Approved**: Notifies answer author of approval (`MODERATION_DECISION`).
+  - **Answer Rejected**: Notifies answer author of rejection with feedback notes (`MODERATION_DECISION`).
+  - **Answer Accepted**: Notifies answer author that their solution was accepted with `+25` reputation reward (`DOUBT_RESOLVED`).
+  - **Doubt Claimed**: Notifies doubt creator that a peer helper has claimed their question (`DOUBT_CREATED`).
+  - **Assignment Cancelled**: Notifies doubt creator that their question was released back to the open pool (`SYSTEM`).
+  - **Assignment Completed**: Notifies doubt creator of assignment completion (`DOUBT_RESOLVED`).
+  - **Resource Approved**: Notifies academic article author that their submission is live (`MODERATION_DECISION`).
+  - **Resource Rejected**: Notifies academic article author with moderator feedback notes (`MODERATION_DECISION`).
+- **Interactive Header Bell & Real-Time Polling**:
+  - Interactive `NotificationBell` with dynamic unread count pill badge (with `99+` formatting).
+  - Lightweight 30-second polling interval and automatic window focus revalidation (`visibilitychange` / `focus`).
+  - Dropdown preview flyout with quick mark-as-read, type-specific styling, relative timestamps, and one-click direct links.
+- **Dedicated Notifications & Activity Center (`/notifications`)**:
+  - Full-page responsive notification hub with status tabs (`All`, `Unread`, `Read`) and event type filter dropdown.
+  - Paginated list with animated loading skeletons, clean empty states, single-click mark-as-read, delete action, and batch "Mark all as read".
+
+---
+
 ## 🧩 Component & Service Architecture
 
 ```
@@ -205,6 +234,9 @@ src/
 │   │   │   ├── page.jsx                      # Tabbed Helper Hub (Feed, Assignments, Profile, Directory)
 │   │   │   └── assignments/
 │   │   │       └── page.jsx                  # Dedicated helper assignments management
+│   │   ├── notifications/
+│   │   │   ├── layout.jsx                    # Metadata provider for notifications center
+│   │   │   └── page.jsx                      # Full-page Notification & Activity Center
 │   │   └── knowledge/
 │   │       ├── layout.jsx                    # Metadata provider for knowledge hub
 │   │       ├── page.jsx                      # Knowledge Hub (Featured, Popular, Subject Pills, Search)
@@ -239,6 +271,13 @@ src/
 │   │   │   └── assignments/
 │   │   │       ├── route.js                  # GET helper assignments
 │   │   │       └── [assignmentId]/route.js   # PATCH cancel / complete assignment
+│   │   ├── notifications/
+│   │   │   ├── route.js                      # GET paginated notifications with filters
+│   │   │   ├── unread-count/route.js         # GET lightweight unread count for badge
+│   │   │   ├── read-all/route.js             # PATCH mark all notifications as read
+│   │   │   └── [notificationId]/
+│   │   │       ├── route.js                  # GET / DELETE single notification
+│   │   │       └── read/route.js             # PATCH mark single notification as read
 │   │   └── health/database/route.js          # GET database connectivity health-check
 │   └── not-found.jsx                         # Global 404 handler
 ├── components/
@@ -277,6 +316,13 @@ src/
 │   │   ├── KnowledgeModerationQueue.jsx      # Moderation review queue with inline approve/reject
 │   │   ├── BookmarkButton.jsx                # Optimistic bookmark toggle button
 │   │   └── RelatedArticles.jsx               # Rule-based related articles recommendation shelf
+│   ├── notifications/
+│   │   ├── NotificationBell.jsx              # Header bell with polling, badge, and dropdown
+│   │   ├── NotificationBadge.jsx             # Count badge pill with 99+ formatting
+│   │   ├── NotificationDropdown.jsx          # Flyout preview panel for recent notifications
+│   │   ├── NotificationItem.jsx              # Card item with icons, timestamp, and actions
+│   │   ├── NotificationFilters.jsx           # Status tabs (All/Unread/Read) and type dropdown
+│   │   └── NotificationList.jsx              # Paginated list with shimmer loading skeletons
 │   └── ui/                                   # Shared design system components (Badge, Button, Card, EmptyState, Input)
 ├── features/
 │   ├── dashboard/
@@ -290,6 +336,8 @@ src/
 │   │   ├── matching.js                       # 100-pt rule-based matching engine
 │   │   ├── actions.js                        # Helper actions
 │   │   └── validation.js                     # Input sanitizer for helper profile and actions
+│   ├── notifications/
+│   │   └── service.js                        # Event-driven notification dispatchers & queries
 │   └── answers/
 │       ├── service.js                        # Transactional answer creation, acceptance, and review
 │       └── actions.js                        # Server actions for answers
@@ -347,6 +395,17 @@ src/
 | `GET` | `/api/knowledge/moderation` | `limit`, `offset` | List pending resources awaiting moderation review |
 | `POST` | `/api/knowledge/:articleId/review` | `{ "decision": "APPROVED" \| "REJECTED", "feedback": "..." }` | Submit moderation review (staff only, no self-review) |
 | `POST` | `/api/knowledge/:articleId/view` | — | Increment view counter atomically |
+
+### Notifications & Activity Center Endpoints
+
+| Method | Endpoint | Query Parameters / Payload | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/notifications` | `page`, `limit`, `read` (`true`\|`false`), `type` | Paginated notifications for current user with unread counter |
+| `GET` | `/api/notifications/unread-count` | — | Lightweight unread counter query for navigation bell |
+| `PATCH`| `/api/notifications/read-all` | — | Mark all notifications as read for current user |
+| `GET` | `/api/notifications/:notificationId`| — | Retrieve single notification (ownership verified) |
+| `PATCH`| `/api/notifications/:notificationId/read` | — | Mark single notification as read (idempotent, ownership verified) |
+| `DELETE`| `/api/notifications/:notificationId` | — | Delete single notification (ownership verified) |
 
 ---
 
@@ -456,6 +515,23 @@ Validated against live PostgreSQL Supabase data:
 - ✅ **Live Activity Stream**: Real-time synthesis of doubt creation, answers, claims, reviews, and resolution events in chronological order.
 
 **Result:** `ALL BACKEND QUERIES & AGGREGATIONS VERIFIED PERFECTLY!`
+
+### 5. Notifications & Activity Center Automated Test Suite
+A comprehensive 21-assertion test suite validates all notification triggers, database cascades, and security protections:
+- ✅ **Schema Integrity**: `link` column properly mapped and persisted on `Notification`.
+- ✅ **Notification Query & Unread Count**: Filter by read status, pagination, and count verification.
+- ✅ **Mark Read & Idempotency**: Transitions `isRead` to true; re-reading preserves state without errors.
+- ✅ **Mark All Read**: Batch updates all unread notifications for a specific user.
+- ✅ **Deletion & Security Guards**: Ownership-verified deletion; cross-user tampering attempts blocked (`403 Forbidden`).
+- ✅ **Answer Submission Event**: Creating an answer notifies the doubt creator (`ANSWER_SUBMITTED`).
+- ✅ **Self-Action Prevention**: Author answering own doubt triggers 0 self-notifications.
+- ✅ **Answer Moderation Decision**: Approving/rejecting an answer notifies the answer author (`MODERATION_DECISION`).
+- ✅ **Answer Acceptance Event**: Accepting an answer notifies author with solution status & reputation reward (`DOUBT_RESOLVED`).
+- ✅ **Doubt Claiming Event**: Helper claiming an open doubt notifies doubt creator (`DOUBT_CREATED`).
+- ✅ **Assignment Lifecycle Events**: Helper cancelling releases question and notifies creator (`SYSTEM`); completing marks resolved (`DOUBT_RESOLVED`).
+- ✅ **Knowledge Moderation Events**: Resource approval and rejection notify article author with direct navigation link.
+
+**Result:** `NOTIFICATIONS TEST SUMMARY: 21 PASSED, 0 FAILED`
 
 ---
 

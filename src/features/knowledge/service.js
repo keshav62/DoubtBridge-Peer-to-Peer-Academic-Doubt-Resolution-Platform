@@ -1,5 +1,9 @@
 import { prisma } from '@/lib/prisma';
 import { canEditKnowledge, canDeleteKnowledge, canReviewKnowledge, ROLES } from '@/lib/permissions';
+import {
+  notifyResourceApproved,
+  notifyResourceRejected,
+} from '@/features/notifications/service';
 
 /**
  * Retrieve knowledge resources / articles with filtering, search, sorting, and pagination.
@@ -526,17 +530,11 @@ export async function reviewKnowledgeResource(resourceId, { decision, feedback }
 
   // Create notification for author
   try {
-    await prisma.notification.create({
-      data: {
-        userId: resource.authorId,
-        title: `Knowledge Resource ${decision === 'APPROVED' ? 'Approved' : 'Needs Review'}`,
-        message:
-          decision === 'APPROVED'
-            ? `Your resource "${resource.title}" was approved and is now live in the Knowledge Hub.`
-            : `Your resource "${resource.title}" was reviewed: ${feedback || 'Please update and resubmit.'}`,
-        type: 'MODERATION_DECISION',
-      },
-    });
+    if (decision === 'APPROVED') {
+      await notifyResourceApproved({ resource, actorId: user.id });
+    } else {
+      await notifyResourceRejected({ resource, feedback, actorId: user.id });
+    }
   } catch (err) {
     // Non-blocking notification failure
     console.error('Failed to dispatch notification:', err);
