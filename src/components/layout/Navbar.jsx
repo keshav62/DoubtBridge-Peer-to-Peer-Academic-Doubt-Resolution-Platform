@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, ChevronDown, Menu } from 'lucide-react';
+import { Search, Menu } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import UserMenu from '@/components/layout/UserMenu';
 
 /**
  * Navbar props:
  *   onMenuClick {function} — called when the mobile hamburger is pressed
+ *   user        {object}   — authenticated user (passed from DashboardShell)
  */
-export default function Navbar({ onMenuClick }) {
+export default function Navbar({ onMenuClick, user }) {
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
@@ -72,33 +74,8 @@ export default function Navbar({ onMenuClick }) {
         {/* Vertical separator */}
         <div aria-hidden="true" className="mx-0.5 h-[22px] w-px bg-[#E5EAF2]" />
 
-        {/* Avatar + dropdown */}
-        <button
-          aria-label="Open user menu"
-          aria-haspopup="true"
-          className="flex items-center gap-2 rounded-xl border border-transparent py-1 pl-1 pr-2 transition-colors hover:border-[#E5EAF2] hover:bg-[#F8FAFC] focus-visible:outline-2 focus-visible:outline-[#2563EB]"
-        >
-          <div
-            aria-hidden="true"
-            className="flex h-[30px] w-[30px] flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-[0.68rem] font-bold tracking-wide text-white"
-          >
-            SU
-          </div>
-
-          {/* Name + role hidden on small screens */}
-          <div className="hidden text-left sm:block">
-            <p className="whitespace-nowrap text-[0.8rem] font-semibold leading-tight text-[#101B3D]">
-              Student User
-            </p>
-            <p className="text-[0.68rem] leading-tight text-[#64748B]">Student</p>
-          </div>
-
-          <ChevronDown
-            size={13}
-            className="hidden flex-shrink-0 text-[#94A3B8] sm:block"
-            aria-hidden="true"
-          />
-        </button>
+        {/* Real user menu with logout */}
+        <UserMenu user={user} />
       </div>
     </header>
   );
