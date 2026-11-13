@@ -14,3 +14,4 @@ export default function NotificationBadge({ count = 0, className = '' }) {
     </span>
   );
 }
+
