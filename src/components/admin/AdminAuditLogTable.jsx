@@ -96,11 +96,11 @@ export default function AdminAuditLogTable({ logs, loading }) {
                 <td className="px-3 py-3.5 whitespace-nowrap">
                   <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-[#2563EB] text-[0.6rem] font-bold">
-                      {log.actor?.name?.slice(0, 2).toUpperCase() || 'AD'}
+                      {log.actor?.name?.slice(0, 2).toUpperCase() || log.actorName?.slice(0, 2).toUpperCase() || 'AD'}
                     </div>
                     <div>
-                      <span className="font-semibold text-[#101B3D] block">{log.actor?.name || 'Admin'}</span>
-                      <span className="text-[0.65rem] text-[#64748B]">{log.actor?.email}</span>
+                      <span className="font-semibold text-[#101B3D] block">{log.actor?.name || log.actorName || 'Administrator'}</span>
+                      <span className="text-[0.65rem] text-[#64748B]">{log.actor?.email || log.actorEmail || 'System Actor'}</span>
                     </div>
                   </div>
                 </td>
@@ -145,3 +145,4 @@ export default function AdminAuditLogTable({ logs, loading }) {
     </div>
   );
 }
+

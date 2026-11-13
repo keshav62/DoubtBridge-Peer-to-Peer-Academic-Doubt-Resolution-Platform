@@ -24,3 +24,4 @@ export default function AdminAccountStatusBadge({ isActive, suspensionReason, cl
     </span>
   );
 }
+

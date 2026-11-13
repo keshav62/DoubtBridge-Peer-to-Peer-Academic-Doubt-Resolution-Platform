@@ -260,3 +260,4 @@ export default function AdminUserDetailPage({ params }) {
     </div>
   );
 }
+
