@@ -1,4 +1,9 @@
 import { prisma } from '@/lib/prisma';
+import {
+  notifyDoubtClaimed,
+  notifyAssignmentCancelled,
+  notifyAssignmentCompleted,
+} from '@/features/notifications/service';
 import { WORKLOAD_LIMIT } from './matching';
 import { validateHelperProfileInput, validateAssignmentAction } from './validation';
 
@@ -398,6 +403,12 @@ export async function claimDoubtRecord(doubtId, user) {
         },
       });
 
+      // Atomically notify the student doubt owner
+      await notifyDoubtClaimed(
+        { doubt: updatedDoubt, helperName: user.name, helperId: user.id, actorId: user.id },
+        tx
+      );
+
       return {
         doubt: updatedDoubt,
         assignment,
@@ -534,6 +545,12 @@ export async function updateAssignmentStatus(assignmentId, user, action) {
           });
         }
 
+        // Atomically notify the doubt owner that assignment was cancelled
+        await notifyAssignmentCancelled(
+          { doubt: assignment.doubt, helperName: user.name, actorId: user.id },
+          tx
+        );
+
         return {
           assignment: updatedAssignment,
           message: 'Assignment cancelled. The doubt has been returned to the open pool for other helpers.',
@@ -548,6 +565,12 @@ export async function updateAssignmentStatus(assignmentId, user, action) {
             completedAt: new Date(),
           },
         });
+
+        // Atomically notify the doubt owner that assignment was completed
+        await notifyAssignmentCompleted(
+          { doubt: assignment.doubt, helperName: user.name, actorId: user.id },
+          tx
+        );
 
         return {
           assignment: updatedAssignment,

@@ -1,4 +1,10 @@
 import { prisma } from '@/lib/prisma';
+import {
+  notifyAnswerSubmitted,
+  notifyAnswerApproved,
+  notifyAnswerRejected,
+  notifyAnswerAccepted,
+} from '@/features/notifications/service';
 
 /**
  * Common select fields for answer authors to protect private user data.
@@ -52,7 +58,7 @@ export async function createAnswerRecord({ doubtId, authorId, content }) {
       // 1. Verify doubt exists and can receive answers
       const doubt = await tx.doubt.findUnique({
         where: { id: doubtId },
-        select: { id: true, status: true },
+        select: { id: true, title: true, studentId: true, status: true },
       });
 
       if (!doubt) {
@@ -85,6 +91,12 @@ export async function createAnswerRecord({ doubtId, authorId, content }) {
           data: { totalAnswers: { increment: 1 } },
         }),
       ]);
+
+      // 3. Atomically notify the doubt owner if not the author
+      await notifyAnswerSubmitted(
+        { doubt, authorName: answer.author?.name, actorId: authorId },
+        tx
+      );
 
       return answer;
     },
@@ -206,6 +218,12 @@ export async function acceptAnswerRecord({ doubtId, answerId, userId, userRole }
         }),
       ]);
 
+      // 7. Atomically notify answer author (+15 rep award)
+      await notifyAnswerAccepted(
+        { answer, doubtTitle: doubt.title, doubtId, actorId: userId },
+        tx
+      );
+
       return {
         success: true,
         answer: updatedAnswer,
@@ -251,7 +269,12 @@ export async function moderateAnswerRecord({
     async (tx) => {
       const answer = await tx.answer.findUnique({
         where: { id: answerId },
-        select: { id: true, authorId: true, doubtId: true },
+        select: {
+          id: true,
+          authorId: true,
+          doubtId: true,
+          doubt: { select: { id: true, title: true } },
+        },
       });
 
       if (!answer) {
@@ -302,6 +325,30 @@ export async function moderateAnswerRecord({
             })
           : Promise.resolve(),
       ]);
+
+      // Atomically notify the answer author of moderation outcome
+      if (decision === 'APPROVED') {
+        await notifyAnswerApproved(
+          {
+            answer,
+            doubtTitle: answer.doubt?.title,
+            doubtId: answer.doubtId,
+            actorId: reviewerId,
+          },
+          tx
+        );
+      } else if (decision === 'REJECTED') {
+        await notifyAnswerRejected(
+          {
+            answer,
+            doubtTitle: answer.doubt?.title,
+            doubtId: answer.doubtId,
+            feedback,
+            actorId: reviewerId,
+          },
+          tx
+        );
+      }
 
       return {
         success: true,
