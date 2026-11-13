@@ -15,6 +15,7 @@
   - [5. Peer Helper Service, Matching Engine & Assignment Management (Task 4)](#5-peer-helper-service-matching-engine--assignment-management-task-4)
   - [6. Academic Knowledge Hub, Article Library & Resource Management (Task 5)](#6-academic-knowledge-hub-article-library--resource-management-task-5)
   - [7. Real-Time Notifications & Activity Center (Task 6)](#7-real-time-notifications--activity-center-task-6)
+  - [8. Real Authentication, Authorization & Production Security (Task 7)](#8-real-authentication-authorization--production-security-task-7)
 - [Component & Service Architecture](#-component--service-architecture)
 - [REST API Reference](#-rest-api-reference)
 - [Role-Based Access Control (RBAC) & Workflows](#-role-based-access-control-rbac--workflows)
@@ -213,6 +214,35 @@ Engineered an event-driven notification dispatch pipeline and centralized activi
 
 ---
 
+### 8. Real Authentication, Authorization & Production Security (Task 7)
+Engineered an enterprise-grade authentication and security perimeter replacing all mock fallbacks:
+- **Encrypted Session Management (`iron-session` v9.1)**:
+  - Cryptographically sealed, tamper-proof, HTTP-only signed session cookies (`doubtbridge_session`) using AES-256-GCM.
+  - Zero server session table overhead; safe stateless session validation.
+  - Configured 7-day sliding expiration with `sameSite: 'lax'` and strict `httpOnly: true`.
+- **Password Security & Bcrypt Hashing**:
+  - Minimum 8-character passwords with alphanumeric complexity enforcement.
+  - Hashed using `bcryptjs` with salt round cost factor 12.
+  - Timing-safe dummy hash comparison to eliminate username enumeration and timing attacks.
+  - Passwords migrated for all 16 existing seeded accounts (`Demo@2026`).
+- **Elimination of Mock Authentication**:
+  - Removed all hardcoded fallbacks (`seed-user-student-1`) and arbitrary unauthenticated impersonation headers from `src/lib/auth.js`.
+  - Unauthenticated requests resolve to `null`, enforcing strict `401 Unauthorized` responses.
+- **Edge Middleware Route Protection (`src/middleware.js`)**:
+  - Intercepts all dashboard paths (`/dashboard`, `/doubts`, `/helpers`, `/knowledge`, `/notifications`) and redirects unauthenticated users to `/login?callbackUrl=...`.
+  - Protects internal API routes with instant `401 Unauthorized` responses.
+  - Allows public paths (`/login`, `/register`, `/`, static assets, `/api/auth/*`).
+- **Comprehensive RBAC Helpers (`src/lib/permissions.js`)**:
+  - `requireAuth`, `requireRole`, `requireOwnerOrAdmin`, `canClaimDoubt`, `canModerate`, `canAcceptAnswer`, `canEditKnowledge`, etc.
+  - Role escalation guard: `sanitisePublicRole()` guarantees that public registration can only select `STUDENT` or `HELPER`. Public users can NEVER register as `ADMIN` or `MODERATOR`.
+  - Admin user management routes (`GET /api/admin/users`, `PATCH /api/admin/users/:userId/role`) with self-modification prevention.
+- **Production Defense-in-Depth & Security Hardening**:
+  - **In-memory Sliding-Window Rate Limiting (`src/lib/rateLimit.js`)**: Prevents brute-force attacks on `/api/auth/login` (10 requests / 15m) and automated registrations on `/api/auth/register` (5 requests / 15m).
+  - **Security Response Headers (`next.config.mjs`)**: Configured `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, and strict `Content-Security-Policy`.
+  - **Dynamic User Menu & Safe Signout**: Interactive `UserMenu` in navbar displaying active user initials, role badge, department, and transition-safe signout clearing the session cookie.
+
+---
+
 ## 🧩 Component & Service Architecture
 
 ```
@@ -396,6 +426,18 @@ src/
 | `POST` | `/api/knowledge/:articleId/review` | `{ "decision": "APPROVED" \| "REJECTED", "feedback": "..." }` | Submit moderation review (staff only, no self-review) |
 | `POST` | `/api/knowledge/:articleId/view` | — | Increment view counter atomically |
 
+### Authentication & User Management Endpoints
+
+| Method | Endpoint | Payload / Query | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | `{ "name", "email", "password", "role" }` | Register new user (defaults to `STUDENT`; rate-limited) |
+| `POST` | `/api/auth/login` | `{ "email", "password" }` | Authenticate user & issue signed HTTP-only cookie |
+| `POST` | `/api/auth/logout` | — | Destroy session & invalidate session cookie |
+| `GET` | `/api/auth/me` | — | Retrieve current authenticated user profile |
+| `POST` | `/api/auth/change-password` | `{ "currentPassword", "newPassword" }` | Update password with verification check |
+| `GET` | `/api/admin/users` | — | List all platform users (Admin only) |
+| `PATCH`| `/api/admin/users/:userId/role` | `{ "role" }` | Change user role (Admin only; cannot self-change) |
+
 ### Notifications & Activity Center Endpoints
 
 | Method | Endpoint | Query Parameters / Payload | Description |
@@ -532,6 +574,18 @@ A comprehensive 21-assertion test suite validates all notification triggers, dat
 - ✅ **Knowledge Moderation Events**: Resource approval and rejection notify article author with direct navigation link.
 
 **Result:** `NOTIFICATIONS TEST SUMMARY: 21 PASSED, 0 FAILED`
+
+### 6. Authentication, RBAC & Security Test Suite (Task 7)
+A comprehensive 19-assertion automated test suite validates cryptographic hashing, session security, and role boundaries:
+- ✅ **Bcrypt Verification**: Correctly validates password hashes (cost factor 12) and rejects invalid credentials.
+- ✅ **Role Escalation Prevention**: `sanitisePublicRole()` forces `STUDENT` default; rejects `ADMIN` and `MODERATOR` from registration payloads.
+- ✅ **Administrative RBAC Guards**: Only administrators can modify user roles; self-modification is strictly blocked.
+- ✅ **Sliding-Window Rate Limiting**: Enforces max request thresholds on login and registration; blocks automated brute-force attempts.
+- ✅ **Database Provisioning**: Safely registers new users in PostgreSQL, assigns default `STUDENT` role, and stores password hashes.
+- ✅ **Unique Email Constraint**: PostgreSQL database rejects duplicate email registration with 409 conflict.
+- ✅ **Seeded User Security**: Verified active `passwordHash` presence for all 16 pre-seeded development accounts (`Demo@2026`).
+
+**Result:** `AUTH & SECURITY TEST SUMMARY: 19 PASSED, 0 FAILED`
 
 ---
 

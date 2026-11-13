@@ -12,10 +12,12 @@ import Navbar from '@/components/layout/Navbar';
  *
  * Props:
  *   children  {ReactNode}
- *   userRole  {string=}   — forwarded to Sidebar for role-gated nav
+ *   user      {object}  — authenticated user (resolved server-side)
+ *   userRole  {string=} — forwarded to Sidebar for role-gated nav (derived from user)
  */
-export default function DashboardShell({ children, userRole }) {
+export default function DashboardShell({ children, user, userRole }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const role = user?.role || userRole;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5F9FF]">
@@ -24,12 +26,12 @@ export default function DashboardShell({ children, userRole }) {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        userRole={userRole}
+        userRole={role}
       />
 
       {/* ── Right column ─────────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <Navbar onMenuClick={() => setSidebarOpen(true)} />
+        <Navbar onMenuClick={() => setSidebarOpen(true)} user={user} />
 
         {/*
           Main content area — bg-[#F5F9FF] light blue-white surface

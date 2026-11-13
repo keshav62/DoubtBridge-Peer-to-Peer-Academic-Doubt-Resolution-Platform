@@ -1,20 +1,24 @@
-﻿import DashboardShell from '@/components/layout/DashboardShell';
+import DashboardShell from '@/components/layout/DashboardShell';
+import { getCurrentUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 /**
  * DashboardLayout — Server Component
  * ─────────────────────────────────────────────────────────────────
- * Wraps all routes inside (dashboard)/ with the shared shell.
- * Interactive state (mobile drawer) lives in DashboardShell so this
- * file can stay a pure Server Component.
- *
- * To add role-gating, pass a userRole prop to DashboardShell,
- * e.g. from a server-side session lookup:
- *   const session = await getServerSession();
- *   <DashboardShell userRole={session?.user?.role}>
+ * Resolves the authenticated user server-side and injects it into
+ * the shell so the Navbar can display real user data.
+ * Unauthenticated requests are redirected to /login by middleware first;
+ * this is a secondary guard.
  */
-export default function DashboardLayout({ children }) {
+export default async function DashboardLayout({ children }) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
   return (
-    <DashboardShell>
+    <DashboardShell user={user}>
       {children}
     </DashboardShell>
   );
