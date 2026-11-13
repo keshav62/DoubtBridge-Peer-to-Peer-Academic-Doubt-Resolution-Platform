@@ -143,6 +143,16 @@ export default function UserMenu({ user }) {
                 Moderation
               </a>
             )}
+
+            {user.role === 'ADMIN' && (
+              <a
+                href="/admin"
+                className="flex items-center gap-2.5 px-4 py-2 text-sm text-[#2563EB] font-semibold hover:bg-[#EFF6FF] transition-colors"
+              >
+                <Settings size={15} className="text-[#2563EB]" />
+                Control Center
+              </a>
+            )}
           </div>
 
           <div className="border-t border-[#E5EAF2] py-1">

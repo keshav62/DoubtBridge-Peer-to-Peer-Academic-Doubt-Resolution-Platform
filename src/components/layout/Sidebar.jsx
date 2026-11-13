@@ -18,6 +18,8 @@ import {
   ChevronDown,
   X,
   Sparkles,
+  Flag,
+  Activity,
 } from 'lucide-react';
 
 /**
@@ -26,13 +28,24 @@ import {
  */
 const NAV_GROUPS = [
   {
+    label: 'Administration',
+    roles: ['admin', 'ADMIN'],
+    items: [
+      { label: 'Control Center', href: '/admin',            icon: LayoutDashboard, roles: ['admin', 'ADMIN'] },
+      { label: 'User Directory', href: '/admin/users',      icon: Users,           roles: ['admin', 'ADMIN'] },
+      { label: 'Moderation Hub', href: '/admin/moderation', icon: ShieldCheck,     roles: ['admin', 'ADMIN'] },
+      { label: 'User Reports',   href: '/admin/reports',    icon: Flag,            roles: ['admin', 'ADMIN'] },
+      { label: 'Audit Logs',     href: '/admin/audit-logs', icon: Activity,        roles: ['admin', 'ADMIN'] },
+    ],
+  },
+  {
     label: 'Main',
     items: [
       { label: 'Dashboard',      href: '/dashboard',   icon: LayoutDashboard },
       { label: 'My Doubts',      href: '/doubts',      icon: HelpCircle },
       { label: 'Help Others',    href: '/helpers',     icon: Users },
       { label: 'Knowledge Base', href: '/knowledge',   icon: Database },
-      { label: 'Moderation',     href: '/moderation',  icon: ShieldCheck, roles: ['moderator', 'admin'] },
+      { label: 'Moderation',     href: '/moderation',  icon: ShieldCheck, roles: ['moderator', 'admin', 'MODERATOR', 'ADMIN'] },
     ],
   },
   {
@@ -64,7 +77,8 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
   const isVisible = (item) => {
     if (!item.roles) return true;
     if (!userRole) return false;
-    return item.roles.includes(userRole);
+    const norm = String(userRole).toUpperCase();
+    return item.roles.some((r) => String(r).toUpperCase() === norm);
   };
 
   const handleLinkClick = () => {

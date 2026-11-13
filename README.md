@@ -16,6 +16,7 @@
   - [6. Academic Knowledge Hub, Article Library & Resource Management (Task 5)](#6-academic-knowledge-hub-article-library--resource-management-task-5)
   - [7. Real-Time Notifications & Activity Center (Task 6)](#7-real-time-notifications--activity-center-task-6)
   - [8. Real Authentication, Authorization & Production Security (Task 7)](#8-real-authentication-authorization--production-security-task-7)
+  - [9. Admin Management & Platform Control Center (Task 8)](#9-admin-management--platform-control-center-task-8)
 - [Component & Service Architecture](#-component--service-architecture)
 - [REST API Reference](#-rest-api-reference)
 - [Role-Based Access Control (RBAC) & Workflows](#-role-based-access-control-rbac--workflows)
@@ -243,6 +244,35 @@ Engineered an enterprise-grade authentication and security perimeter replacing a
 
 ---
 
+### 9. Admin Management & Platform Control Center (Task 8)
+Engineered an enterprise administration control suite providing platform observability, user governance, moderation oversight, and immutable audit trails:
+- **Database-Backed Overview Control Center (`/admin`)**:
+  - Live PostgreSQL KPI telemetry: Total registered users, student/helper/moderator/admin breakdowns, active helpers count, suspended account counter.
+  - Academic content metrics: Total doubts, open questions, resolved questions, system resolution rate percentage, and total answers.
+  - Moderation queue shortcuts: Pending answers, pending knowledge resources, and pending community reports.
+  - Live activity streams: Recent student registrations, recent platform doubts, and recent administrative actions.
+- **User Directory & Governance Hub (`/admin/users`)**:
+  - Filtered, debounced user query engine with multi-role dropdown, account status filters (`Active` vs `Suspended`), and multi-criteria sorting.
+  - Safe server-side pagination with record counters.
+  - Interactive **Change Role Modal** (`PATCH /api/admin/users/:id/role`) with strict self-modification blocks (`actor.id !== targetId`) and automatic `AuditLog` recording.
+  - **Account Status Suspension & Reactivation** (`PATCH /api/admin/users/:id/status`): Allows administrators to suspend malicious accounts with logged justification notes, immediately revoking authenticated platform access while preserving historical academic contributions.
+- **Detailed User Academic Inspector (`/admin/users/[userId]`)**:
+  - 360-degree user inspection: department, academic year, registration date, peer reputation, and helper profile specializations.
+  - Complete history feeds: Recent doubts created, answers contributed with upvote stats and accepted solution badges, and helper assignment statuses.
+  - Dedicated user audit trail displaying all historical administrative decisions targeting the account.
+- **Unified Moderation Hub (`/admin/moderation`)**:
+  - Unified administrative queue categorizing pending answers, pending knowledge guides, and flagged user reports into one control center.
+  - One-click deep link transitions into live doubt contexts and moderation review forms.
+- **Community Reports Oversight (`/admin/reports`)**:
+  - Filtered report management table (`Pending Review`, `Reviewed`, `Dismissed`).
+  - Interactive resolution modal (`PATCH /api/admin/reports/:id`) allowing admins to record review notes and resolution status, with automatic append-only audit tracking.
+- **Append-Only Administrative Audit Logs (`/admin/audit-logs`)**:
+  - Immutable database audit trail (`AuditLog` model in PostgreSQL) tracking all sensitive operations: role changes, account suspensions, account reactivations, and report reviews.
+  - Records administrator identity, action type, target entity type, target entity ID, non-sensitive JSON metadata, and UTC timestamp.
+  - Action filtering and server-side pagination. Does not permit modification or deletion through application APIs.
+
+---
+
 ## 🧩 Component & Service Architecture
 
 ```
@@ -435,8 +465,15 @@ src/
 | `POST` | `/api/auth/logout` | — | Destroy session & invalidate session cookie |
 | `GET` | `/api/auth/me` | — | Retrieve current authenticated user profile |
 | `POST` | `/api/auth/change-password` | `{ "currentPassword", "newPassword" }` | Update password with verification check |
-| `GET` | `/api/admin/users` | — | List all platform users (Admin only) |
-| `PATCH`| `/api/admin/users/:userId/role` | `{ "role" }` | Change user role (Admin only; cannot self-change) |
+| `GET` | `/api/admin/users` | `search`, `role`, `status`, `sort`, `page`, `limit` | Paginated user directory with role/status filters (Admin only) |
+| `GET` | `/api/admin/users/:userId` | — | Complete user profile, academic history, and audit trail (Admin only) |
+| `PATCH`| `/api/admin/users/:userId/role` | `{ "role" }` | Change user role with audit logging (Admin only; no self-edit) |
+| `PATCH`| `/api/admin/users/:userId/status` | `{ "isActive", "suspensionReason" }` | Suspend or reactivate account with audit logging (Admin only) |
+| `GET` | `/api/admin/overview` | — | Platform telemetry, user breakdowns, queue stats, and activity (Admin only) |
+| `GET` | `/api/admin/moderation` | `type`, `page`, `limit` | Unified pending queue: answers, resources, and reports (Admin only) |
+| `GET` | `/api/admin/reports` | `status`, `page`, `limit` | Community reports management queue (Admin only) |
+| `PATCH`| `/api/admin/reports/:reportId` | `{ "status", "resolutionNotes" }` | Resolve or dismiss report with admin notes (Admin only) |
+| `GET` | `/api/admin/audit-logs` | `action`, `targetType`, `actorId`, `page`, `limit` | Append-only chronological audit log history (Admin only) |
 
 ### Notifications & Activity Center Endpoints
 
@@ -586,6 +623,21 @@ A comprehensive 19-assertion automated test suite validates cryptographic hashin
 - ✅ **Seeded User Security**: Verified active `passwordHash` presence for all 16 pre-seeded development accounts (`Demo@2026`).
 
 **Result:** `AUTH & SECURITY TEST SUMMARY: 19 PASSED, 0 FAILED`
+
+### 7. Admin Management & Platform Control Center Test Suite (Task 8)
+A comprehensive 35-assertion automated test suite validates administrator telemetry, user governance, suspension enforcement, report resolution, and append-only audit logging:
+- ✅ **Telemetry Integrity**: `getAdminOverview()` aggregates real database counts for users, role breakdowns, active helpers, content health, and resolution rate.
+- ✅ **User Directory & Filters**: Validates search by keyword, role filtering (`STUDENT`, `HELPER`, `MODERATOR`, `ADMIN`), and server-side pagination.
+- ✅ **Detailed User Inspection**: Returns complete history of questions asked, answers given, assignments, and historical audit trail; strictly omits password hashes.
+- ✅ **Role Modification Security**: Rejects role update attempts by non-admins (`403 Forbidden`); blocks administrator self-role changes (`403 Forbidden`).
+- ✅ **Role Modification Audit Trail**: Updates target user role and atomically records append-only `AuditLog` (`action: USER_ROLE_CHANGE`) with old and new roles in metadata.
+- ✅ **Account Status Management**: Successfully suspends account with reason, blocking access; rejects self-suspension attempts by admins (`403 Forbidden`).
+- ✅ **Account Status Audit Trail**: Atomically records `AuditLog` (`action: USER_SUSPEND` / `USER_ACTIVATE`) with justification notes.
+- ✅ **Community Reports Oversight**: Retrieves reports queue; verifies resolution (`REVIEWED` / `DISMISSED`) and records `REPORT_REVIEW` audit record.
+- ✅ **Unified Moderation Aggregations**: Accurately tallies pending answers, pending knowledge resources, and pending reports.
+- ✅ **Append-Only Audit History**: Validates immutable chronological audit log queries with administrator attribution and structured metadata.
+
+**Result:** `ADMIN CONTROL CENTER TEST SUMMARY: 35 PASSED, 0 FAILED`
 
 ---
 
