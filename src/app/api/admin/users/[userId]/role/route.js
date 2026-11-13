@@ -1,25 +1,15 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { requireRole, canChangeUserRole, ROLES } from '@/lib/permissions';
+import { requireRole, ROLES } from '@/lib/permissions';
+import { updateUserRole } from '@/features/admin/service';
 
-const ALLOWED_ROLES = Object.values(ROLES);
-
-// PATCH /api/admin/users/:userId/role — change a user's role (admin only)
+// PATCH /api/admin/users/:userId/role — update user role with audit logging
 export async function PATCH(request, { params }) {
   try {
     const actor = await getCurrentUser();
     requireRole(actor, [ROLES.ADMIN]);
 
     const { userId } = await params;
-
-    if (!canChangeUserRole(actor, userId)) {
-      return NextResponse.json(
-        { success: false, error: 'You cannot change your own role.' },
-        { status: 403 }
-      );
-    }
-
     let body;
     try {
       body = await request.json();
@@ -28,26 +18,21 @@ export async function PATCH(request, { params }) {
     }
 
     const { role } = body ?? {};
-
-    if (!role || !ALLOWED_ROLES.includes(role)) {
-      return NextResponse.json(
-        { success: false, error: `Role must be one of: ${ALLOWED_ROLES.join(', ')}.` },
-        { status: 400 }
-      );
+    if (!role) {
+      return NextResponse.json({ success: false, error: 'Role is required.' }, { status: 400 });
     }
 
-    const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
-    if (!target) {
-      return NextResponse.json({ success: false, error: 'User not found.' }, { status: 404 });
-    }
-
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { role },
-      select: { id: true, name: true, email: true, role: true },
+    const updated = await updateUserRole({
+      actor,
+      targetUserId: userId,
+      newRole: role,
     });
 
-    return NextResponse.json({ success: true, user: updated });
+    return NextResponse.json({
+      success: true,
+      user: updated,
+      message: `User role updated to ${role} successfully.`,
+    });
   } catch (error) {
     return NextResponse.json(
       { success: false, error: error.message },

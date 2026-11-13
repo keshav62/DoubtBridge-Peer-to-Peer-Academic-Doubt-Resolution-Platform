@@ -88,15 +88,17 @@ model User {
   isActive     Boolean  @default(true)
   isAvailable  Boolean  @default(true)  // Backward compatibility with existing helper queries
   reputation   Int      @default(0)     // Peer reputation points
-  subjects     String?                  // Comma-separated subjects for helper matching
-  passwordHash String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  subjects         String?                  // Comma-separated subjects for helper matching
+  passwordHash     String?
+  suspensionReason String?                  // Reason for account suspension
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Profile and assignments
   helperProfile      HelperProfile?
   doubtAssignments   DoubtAssignment[]   @relation("HelperAssignments")
   moderationReviews  ModerationReview[]  @relation("ModeratorReviews")
+  auditLogs          AuditLog[]          @relation("UserAuditLogs")
 
   // Academic activity relations
   authoredDoubts     Doubt[]             @relation("UserAuthoredDoubts")
@@ -313,20 +315,38 @@ model DoubtTag {
 }
 
 model Report {
-  id         String       @id @default(cuid())
-  reason     String
-  status     ReportStatus @default(PENDING)
-  reporterId String
-  reporter   User         @relation("ReporterUser", fields: [reporterId], references: [id], onDelete: Cascade)
-  doubtId    String?
-  doubt      Doubt?       @relation(fields: [doubtId], references: [id], onDelete: Cascade)
-  answerId   String?
-  answer     Answer?      @relation(fields: [answerId], references: [id], onDelete: Cascade)
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  id              String       @id @default(cuid())
+  reason          String
+  status          ReportStatus @default(PENDING)
+  resolutionNotes String?
+  reviewedAt      DateTime?
+  reporterId      String
+  reporter        User         @relation("ReporterUser", fields: [reporterId], references: [id], onDelete: Cascade)
+  doubtId         String?
+  doubt           Doubt?       @relation(fields: [doubtId], references: [id], onDelete: Cascade)
+  answerId        String?
+  answer          Answer?      @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   @@index([status])
   @@index([reporterId])
   @@index([doubtId])
   @@index([answerId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: Cascade)
+  action     String   // e.g. "USER_ROLE_CHANGE", "USER_SUSPEND", "USER_ACTIVATE", "REPORT_REVIEW", "ADMIN_MODERATION"
+  targetType String   // e.g. "USER", "REPORT", "ANSWER", "RESOURCE", "DOUBT"
+  targetId   String
+  metadata   String?  // JSON stringified non-sensitive metadata
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
 }
