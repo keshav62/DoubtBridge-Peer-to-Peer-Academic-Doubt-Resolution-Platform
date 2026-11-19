@@ -28,6 +28,7 @@ export async function GET(request) {
     const subject = searchParams.get('subject') || undefined;
     const search = searchParams.get('q') || undefined;
     const mine = searchParams.get('mine') === 'true';
+    const helper = searchParams.get('helper') === 'true';
 
     const validStatuses = ['OPEN', 'ASSIGNED', 'CLAIMED', 'ANSWERED', 'RESOLVED', 'CLOSED'];
 
@@ -40,6 +41,7 @@ export async function GET(request) {
 
     const result = await getDoubts({
       studentId: mine ? user.id : undefined,
+      helperId: helper ? user.id : undefined,
       status,
       subject,
       search,
