@@ -17,6 +17,7 @@ const doubtIncludes = {
 // Get doubts with search, filters and pagination
 export async function getDoubts({
   studentId,
+  helperId,
   status,
   subject,
   search,
@@ -27,6 +28,7 @@ export async function getDoubts({
   const where = {};
 
   if (studentId) where.studentId = studentId;
+  if (helperId) where.helperId = helperId;
   if (status) where.status = status;
   if (subject) where.subject = { contains: subject, mode: 'insensitive' };
 

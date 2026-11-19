@@ -40,6 +40,17 @@ const NAV_GROUPS = [
   },
   {
     label: 'Main',
+    roles: ['helper', 'HELPER'],
+    items: [
+      { label: 'Dashboard',      href: '/helper',        icon: LayoutDashboard, roles: ['helper', 'HELPER'] },
+      { label: 'Help Others',    href: '/help-others',   icon: HelpCircle,       roles: ['helper', 'HELPER'] },
+      { label: 'Solutions by Me', href: '/solutions',    icon: MessageSquare,    roles: ['helper', 'HELPER'] },
+      { label: 'All Doubts',     href: '/all-doubts',     icon: BookOpen,        roles: ['helper', 'HELPER'] },
+    ],
+  },
+  {
+    label: 'Main',
+    roles: ['student', 'STUDENT'],
     items: [
       { label: 'Dashboard',      href: '/dashboard',   icon: LayoutDashboard },
       { label: 'My Doubts',      href: '/doubts',      icon: HelpCircle },
@@ -50,6 +61,7 @@ const NAV_GROUPS = [
   },
   {
     label: 'Learning',
+    roles: ['student', 'STUDENT'],
     items: [
       { label: 'My Progress', href: '/progress',  icon: TrendingUp },
       { label: 'Bookmarks',   href: '/bookmarks', icon: Bookmark },
@@ -57,6 +69,7 @@ const NAV_GROUPS = [
   },
   {
     label: 'Community',
+    roles: ['student', 'STUDENT'],
     items: [
       { label: 'Discussion',  href: '/discussion',  icon: MessageSquare },
       { label: 'Leaderboard', href: '/leaderboard', icon: Trophy },
@@ -79,6 +92,13 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
     if (!userRole) return false;
     const norm = String(userRole).toUpperCase();
     return item.roles.some((r) => String(r).toUpperCase() === norm);
+  };
+
+  const isGroupVisible = (group) => {
+    if (!group.roles) return true;
+    if (!userRole) return false;
+    const norm = String(userRole).toUpperCase();
+    return group.roles.some((r) => String(r).toUpperCase() === norm);
   };
 
   const handleLinkClick = () => {
@@ -149,6 +169,9 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
         {/* ── Navigation ───────────────────────────────────────── */}
         <nav className="flex-1 px-3 pt-3">
           {NAV_GROUPS.map((group) => {
+            // Check if the group itself is visible based on its roles
+            if (!isGroupVisible(group)) return null;
+
             const visibleItems = group.items.filter(isVisible);
             if (visibleItems.length === 0) return null;
 
