@@ -86,7 +86,14 @@ const NAV_GROUPS = [
   },
 ];
 
-export default function Sidebar({ isOpen = false, onClose, userRole }) {
+function getInitials(name) {
+  if (!name) return 'U';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
+export default function Sidebar({ isOpen = false, onClose, userRole, user }) {
   const pathname = usePathname();
 
   const isVisible = (item) => {
@@ -258,8 +265,10 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
 
         {/* ── User profile ─────────────────────────────────────── */}
         <div className="p-3">
-          <button
-            aria-label="Open user menu"
+          <Link
+            href="/settings"
+            onClick={handleLinkClick}
+            aria-label="Open user settings"
             className="flex w-full items-center gap-2.5 rounded-xl border border-transparent p-2 text-left transition-all duration-150 hover:border-[#E5EAF2] hover:bg-[#F8FAFC] focus-visible:outline-2 focus-visible:outline-[#2563EB]"
           >
             {/* Avatar */}
@@ -267,17 +276,17 @@ export default function Sidebar({ isOpen = false, onClose, userRole }) {
               aria-hidden="true"
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-[0.7rem] font-bold tracking-wide text-white"
             >
-              SU
+              {getInitials(user?.name)}
             </div>
 
             {/* User info */}
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.825rem] font-semibold text-[#101B3D]">Student User</p>
-              <p className="text-[0.7rem] text-[#64748B]">Student</p>
+              <p className="truncate text-[0.825rem] font-semibold text-[#101B3D]">{user?.name || 'User Profile'}</p>
+              <p className="text-[0.7rem] text-[#64748B] capitalize">{user?.role?.toLowerCase() || 'Student'}</p>
             </div>
 
             <ChevronDown size={14} className="flex-shrink-0 text-[#94A3B8]" aria-hidden="true" />
-          </button>
+          </Link>
         </div>
       </aside>
     </>

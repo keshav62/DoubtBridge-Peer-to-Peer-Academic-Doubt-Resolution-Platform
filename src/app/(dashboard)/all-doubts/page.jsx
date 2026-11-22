@@ -26,7 +26,7 @@ export default function AllDoubtsPage() {
   useEffect(() => {
     async function fetchUserRole() {
       try {
-        const response = await fetch('/api/user');
+        const response = await fetch('/api/auth/me');
         const data = await response.json();
         if (data.success) {
           setUserRole(data.user?.role);

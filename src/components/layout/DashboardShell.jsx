@@ -27,6 +27,7 @@ export default function DashboardShell({ children, user, userRole }) {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         userRole={role}
+        user={user}
       />
 
       {/* ── Right column ─────────────────────────────────────── */}

@@ -31,9 +31,22 @@ export async function getCurrentUser() {
         avatarUrl: true,
         department: true,
         academicYear: true,
+        subjects: true,
         isAvailable: true,
         isActive: true,
         createdAt: true,
+        updatedAt: true,
+        helperProfile: {
+          select: {
+            bio: true,
+            expertise: true,
+            subjects: true,
+            reputation: true,
+            totalAnswers: true,
+            acceptedAnswers: true,
+            isAvailable: true,
+          },
+        },
         // passwordHash is intentionally excluded
       },
     });
@@ -42,7 +55,16 @@ export async function getCurrentUser() {
       return null;
     }
 
-    return user;
+    // Merge helperProfile fields into top-level user object for clean client usage
+    const safeUser = {
+      ...user,
+      bio: user.helperProfile?.bio || null,
+      expertise: user.helperProfile?.expertise || null,
+      subjects: user.subjects || user.helperProfile?.subjects || '',
+      isAvailable: user.isAvailable ?? user.helperProfile?.isAvailable ?? true,
+    };
+
+    return safeUser;
   } catch {
     return null;
   }
