@@ -13,6 +13,7 @@ import {
   Clock,
   Sparkles,
   RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 import AdminStats from '@/components/admin/AdminStats';
 import AdminAccountStatusBadge from '@/components/admin/AdminAccountStatusBadge';
@@ -81,13 +82,29 @@ export default function AdminOverviewPage() {
       <AdminStats metrics={data?.metrics} loading={loading} />
 
       {/* Quick Navigation Shortcuts */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Link
+          href="/admin/answers"
+          className="group flex items-center justify-between rounded-2xl border border-[#E5EAF2] bg-white p-4 shadow-xs hover:border-[#2563EB]/40 hover:shadow-sm transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB] group-hover:scale-105 transition-transform">
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[#101B3D]">Answer Verification</p>
+              <p className="text-xs text-[#64748B]">Verify helper answers</p>
+            </div>
+          </div>
+          <ArrowRight size={16} className="text-[#94A3B8] group-hover:text-[#2563EB] group-hover:translate-x-0.5 transition-all" />
+        </Link>
+
         <Link
           href="/admin/users"
           className="group flex items-center justify-between rounded-2xl border border-[#E5EAF2] bg-white p-4 shadow-xs hover:border-[#2563EB]/40 hover:shadow-sm transition-all"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB] group-hover:scale-105 transition-transform">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-[#344568] group-hover:scale-105 transition-transform">
               <Users size={18} />
             </div>
             <div>

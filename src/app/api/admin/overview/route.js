@@ -7,7 +7,7 @@ import { getAdminOverview } from '@/features/admin/service';
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    requireRole(user, [ROLES.ADMIN]);
+    requireRole(user, [ROLES.ADMIN, ROLES.MODERATOR]);
 
     const data = await getAdminOverview();
 

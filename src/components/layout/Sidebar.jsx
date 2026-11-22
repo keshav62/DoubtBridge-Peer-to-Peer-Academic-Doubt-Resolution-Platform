@@ -20,6 +20,7 @@ import {
   Sparkles,
   Flag,
   Activity,
+  CheckCircle2,
 } from 'lucide-react';
 
 /**
@@ -29,13 +30,14 @@ import {
 const NAV_GROUPS = [
   {
     label: 'Administration',
-    roles: ['admin', 'ADMIN'],
+    roles: ['admin', 'ADMIN', 'moderator', 'MODERATOR'],
     items: [
-      { label: 'Control Center', href: '/admin',            icon: LayoutDashboard, roles: ['admin', 'ADMIN'] },
-      { label: 'User Directory', href: '/admin/users',      icon: Users,           roles: ['admin', 'ADMIN'] },
-      { label: 'Moderation Hub', href: '/admin/moderation', icon: ShieldCheck,     roles: ['admin', 'ADMIN'] },
-      { label: 'User Reports',   href: '/admin/reports',    icon: Flag,            roles: ['admin', 'ADMIN'] },
-      { label: 'Audit Logs',     href: '/admin/audit-logs', icon: Activity,        roles: ['admin', 'ADMIN'] },
+      { label: 'Control Center',      href: '/admin',            icon: LayoutDashboard, roles: ['admin', 'ADMIN', 'moderator', 'MODERATOR'] },
+      { label: 'Answer Verification', href: '/admin/answers',    icon: CheckCircle2,    roles: ['admin', 'ADMIN', 'moderator', 'MODERATOR'] },
+      { label: 'User Directory',      href: '/admin/users',      icon: Users,           roles: ['admin', 'ADMIN'] },
+      { label: 'Moderation Hub',      href: '/admin/moderation', icon: ShieldCheck,     roles: ['admin', 'ADMIN', 'moderator', 'MODERATOR'] },
+      { label: 'User Reports',        href: '/admin/reports',    icon: Flag,            roles: ['admin', 'ADMIN', 'moderator', 'MODERATOR'] },
+      { label: 'Audit Logs',          href: '/admin/audit-logs', icon: Activity,        roles: ['admin', 'ADMIN'] },
     ],
   },
   {

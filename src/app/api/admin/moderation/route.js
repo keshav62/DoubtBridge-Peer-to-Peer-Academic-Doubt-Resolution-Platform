@@ -7,7 +7,7 @@ import { getAdminModerationOverview } from '@/features/admin/service';
 export async function GET(request) {
   try {
     const user = await getCurrentUser();
-    requireRole(user, [ROLES.ADMIN]);
+    requireRole(user, [ROLES.ADMIN, ROLES.MODERATOR]);
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'all';

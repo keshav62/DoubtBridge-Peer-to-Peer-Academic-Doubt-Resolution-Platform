@@ -234,8 +234,28 @@ export async function notifyAnswerRejected({ answer, doubtTitle, doubtId, feedba
   return createNotification(
     {
       userId: answer.authorId,
-      title: 'Answer Needs Revision',
-      message: `Your answer on "${doubtTitle || 'academic doubt'}" was reviewed: ${feedback || 'Please review guidelines and resubmit.'}`,
+      title: 'Answer Rejected',
+      message: `Your answer on "${doubtTitle || 'academic doubt'}" was rejected: ${feedback || 'Please review guidelines and resubmit.'}`,
+      type: 'MODERATION_DECISION',
+      link: `/doubts/${doubtId || answer.doubtId}`,
+    },
+    tx
+  );
+}
+
+/**
+ * 3b. Answer Changes Requested -> Notify Answer Author with Constructive Guidance
+ */
+export async function notifyAnswerChangesRequested({ answer, doubtTitle, doubtId, feedback, actorId }, tx = null) {
+  if (!answer || !answer.authorId || answer.authorId === actorId) {
+    return null;
+  }
+
+  return createNotification(
+    {
+      userId: answer.authorId,
+      title: 'Changes Requested on Answer',
+      message: `A reviewer requested changes on your answer for "${doubtTitle || 'academic doubt'}": ${feedback || 'Please review guidelines and update your answer.'}`,
       type: 'MODERATION_DECISION',
       link: `/doubts/${doubtId || answer.doubtId}`,
     },

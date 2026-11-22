@@ -1,5 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import { ROLES } from '@/lib/permissions';
+import {
+  notifyAnswerApproved,
+  notifyAnswerRejected,
+  notifyAnswerChangesRequested,
+} from '@/features/notifications/service';
 
 /**
  * Redacts any sensitive keys (passwords, tokens, cookies, secrets) from metadata before storing.
@@ -96,6 +101,9 @@ export async function getAdminOverview() {
     resolvedDoubts,
     totalAnswers,
     pendingAnswers,
+    approvedAnswers,
+    rejectedAnswers,
+    needsChangesAnswers,
     pendingResources,
     pendingReports,
     recentRegistrations,
@@ -114,6 +122,9 @@ export async function getAdminOverview() {
     prisma.doubt.count({ where: { status: 'RESOLVED' } }),
     prisma.answer.count(),
     prisma.answer.count({ where: { status: 'PENDING' } }),
+    prisma.answer.count({ where: { status: 'APPROVED' } }),
+    prisma.answer.count({ where: { status: 'REJECTED' } }),
+    prisma.moderationReview.count({ where: { decision: 'NEEDS_CHANGES' } }),
     prisma.knowledgeResource.count({ where: { status: 'PENDING' } }),
     prisma.report.count({ where: { status: 'PENDING' } }),
     prisma.user.findMany({
@@ -172,6 +183,16 @@ export async function getAdminOverview() {
         resolvedDoubts,
         resolutionRate,
         totalAnswers,
+        approvedAnswers,
+        rejectedAnswers,
+        needsChangesAnswers,
+      },
+      answers: {
+        total: totalAnswers,
+        pending: pendingAnswers,
+        approved: approvedAnswers,
+        rejected: rejectedAnswers,
+        needsChanges: needsChangesAnswers,
       },
       pendingQueue: {
         pendingAnswers,
@@ -719,6 +740,543 @@ export async function getAdminAuditLogs({
       total,
       totalPages: Math.ceil(total / take) || 1,
     },
+  };
+}
+
+/**
+ * Filtered, paginated answer verification list for administrators and moderators.
+ */
+export async function getAdminAnswers({
+  status,
+  subject,
+  search,
+  queue = 'all',
+  sort = 'newest',
+  page = 1,
+  limit = 10,
+} = {}) {
+  const take = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 50);
+  const skip = (Math.max(parseInt(page, 10) || 1, 1) - 1) * take;
+
+  const where = {};
+
+  // Status & queue filtering
+  if (queue === 'pending') {
+    where.status = 'PENDING';
+  } else if (queue === 'urgent') {
+    where.status = 'PENDING';
+    where.doubt = { priority: { in: ['HIGH', 'URGENT'] } };
+  } else if (queue === 'needs_changes') {
+    where.reviews = { some: { decision: 'NEEDS_CHANGES' } };
+  } else if (queue === 'approved') {
+    where.status = 'APPROVED';
+  } else if (queue === 'rejected') {
+    where.status = 'REJECTED';
+  } else if (status) {
+    const s = status.toUpperCase();
+    if (s === 'NEEDS_CHANGES') {
+      where.reviews = { some: { decision: 'NEEDS_CHANGES' } };
+    } else if (['PENDING', 'APPROVED', 'REJECTED'].includes(s)) {
+      where.status = s;
+    }
+  }
+
+  // Subject filtering
+  if (subject && subject !== 'All') {
+    where.doubt = {
+      ...(where.doubt || {}),
+      subject: { equals: subject, mode: 'insensitive' },
+    };
+  }
+
+  // Search filtering
+  if (search && search.trim()) {
+    const q = search.trim();
+    where.OR = [
+      { content: { contains: q, mode: 'insensitive' } },
+      { author: { name: { contains: q, mode: 'insensitive' } } },
+      { doubt: { title: { contains: q, mode: 'insensitive' } } },
+    ];
+  }
+
+  // Sorting
+  let orderBy = { createdAt: 'desc' };
+  if (sort === 'oldest' || queue === 'oldest') {
+    orderBy = { createdAt: 'asc' };
+  }
+
+  const [total, answers] = await Promise.all([
+    prisma.answer.count({ where }),
+    prisma.answer.findMany({
+      where,
+      orderBy,
+      skip,
+      take,
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            reputation: true,
+            avatar: true,
+            avatarUrl: true,
+            department: true,
+            academicYear: true,
+            helperProfile: {
+              select: {
+                expertise: true,
+                subjects: true,
+                reputation: true,
+                totalAnswers: true,
+                acceptedAnswers: true,
+              },
+            },
+          },
+        },
+        doubt: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            subject: true,
+            topic: true,
+            priority: true,
+            status: true,
+            tags: true,
+            createdAt: true,
+            student: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                department: true,
+                academicYear: true,
+              },
+            },
+          },
+        },
+        reviews: {
+          orderBy: { reviewedAt: 'desc' },
+          select: {
+            id: true,
+            decision: true,
+            feedback: true,
+            reviewedAt: true,
+            reviewer: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    answers,
+    pagination: {
+      page: Math.max(parseInt(page, 10) || 1, 1),
+      limit: take,
+      total,
+      totalPages: Math.ceil(total / take) || 1,
+    },
+  };
+}
+
+/**
+ * Detailed answer inspection for verification and review panel.
+ */
+export async function getAdminAnswerDetail(answerId) {
+  if (!answerId) return null;
+
+  return prisma.answer.findUnique({
+    where: { id: answerId },
+    include: {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          reputation: true,
+          avatar: true,
+          avatarUrl: true,
+          department: true,
+          academicYear: true,
+          helperProfile: {
+            select: {
+              bio: true,
+              expertise: true,
+              subjects: true,
+              reputation: true,
+              totalAnswers: true,
+              acceptedAnswers: true,
+              isAvailable: true,
+            },
+          },
+        },
+      },
+      doubt: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          subject: true,
+          topic: true,
+          difficulty: true,
+          priority: true,
+          status: true,
+          tags: true,
+          createdAt: true,
+          student: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              department: true,
+              academicYear: true,
+              reputation: true,
+            },
+          },
+        },
+      },
+      reviews: {
+        orderBy: { reviewedAt: 'desc' },
+        include: {
+          reviewer: {
+            select: {
+              id: true,
+              name: true,
+              role: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+/**
+ * Perform an atomic administrative moderation action on an answer.
+ * Approves, rejects, or requests changes, notifies the author, and writes an audit log.
+ */
+export async function moderateAnswerAdmin({ answerId, reviewer, decision, feedback }) {
+  if (!reviewer || (reviewer.role !== ROLES.ADMIN && reviewer.role !== ROLES.MODERATOR)) {
+    const err = new Error('Forbidden: Only administrators and moderators can review answers.');
+    err.status = 403;
+    throw err;
+  }
+
+  if (!answerId) {
+    const err = new Error('Answer ID is required.');
+    err.status = 400;
+    throw err;
+  }
+
+  const validDecisions = ['APPROVED', 'REJECTED', 'NEEDS_CHANGES'];
+  if (!validDecisions.includes(decision)) {
+    const err = new Error(`Invalid decision. Must be one of: ${validDecisions.join(', ')}`);
+    err.status = 400;
+    throw err;
+  }
+
+  const trimmedFeedback = typeof feedback === 'string' ? feedback.trim() : '';
+
+  if (decision === 'REJECTED' && trimmedFeedback.length < 5) {
+    const err = new Error('A rejection reason of at least 5 characters is required.');
+    err.status = 400;
+    throw err;
+  }
+
+  if (decision === 'NEEDS_CHANGES' && trimmedFeedback.length < 5) {
+    const err = new Error('Constructive feedback of at least 5 characters is required when requesting changes.');
+    err.status = 400;
+    throw err;
+  }
+
+  const answer = await prisma.answer.findUnique({
+    where: { id: answerId },
+    include: {
+      doubt: { select: { id: true, title: true, status: true, studentId: true } },
+      author: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  if (!answer) {
+    const err = new Error('Answer not found.');
+    err.status = 404;
+    throw err;
+  }
+
+  // Prevent self-moderation
+  if (answer.authorId === reviewer.id) {
+    const err = new Error('Forbidden: You cannot moderate your own submitted answer.');
+    err.status = 403;
+    throw err;
+  }
+
+  let targetStatus = 'PENDING';
+  if (decision === 'APPROVED') targetStatus = 'APPROVED';
+  if (decision === 'REJECTED') targetStatus = 'REJECTED';
+  // If NEEDS_CHANGES, targetStatus remains PENDING
+
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Create ModerationReview
+    const review = await tx.moderationReview.create({
+      data: {
+        answerId,
+        reviewerId: reviewer.id,
+        decision,
+        feedback: trimmedFeedback || null,
+      },
+      include: {
+        reviewer: {
+          select: { id: true, name: true, role: true },
+        },
+      },
+    });
+
+    // 2. Update Answer
+    const updatedAnswer = await tx.answer.update({
+      where: { id: answerId },
+      data: { status: targetStatus },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            reputation: true,
+          },
+        },
+        reviews: {
+          orderBy: { reviewedAt: 'desc' },
+          include: {
+            reviewer: { select: { id: true, name: true, role: true } },
+          },
+        },
+      },
+    });
+
+    // 3. If approved, transition doubt to ANSWERED if it is currently OPEN, ASSIGNED, or CLAIMED
+    if (decision === 'APPROVED') {
+      await tx.doubt.updateMany({
+        where: {
+          id: answer.doubtId,
+          status: { in: ['OPEN', 'ASSIGNED', 'CLAIMED'] },
+        },
+        data: { status: 'ANSWERED' },
+      });
+    }
+
+    // 4. Record AuditLog
+    await tx.auditLog.create({
+      data: {
+        actorId: reviewer.id,
+        actorEmail: reviewer.email,
+        actorName: reviewer.name,
+        actorRole: reviewer.role,
+        action: 'ANSWER_MODERATION',
+        targetType: 'ANSWER',
+        targetId: answerId,
+        metadata: JSON.stringify({
+          decision,
+          feedback: trimmedFeedback || null,
+          previousStatus: answer.status,
+          newStatus: targetStatus,
+          doubtId: answer.doubtId,
+          doubtTitle: answer.doubt?.title,
+          authorId: answer.authorId,
+          authorName: answer.author?.name,
+        }),
+      },
+    });
+
+    // 5. Dispatch notification to author
+    if (decision === 'APPROVED') {
+      await notifyAnswerApproved(
+        {
+          answer,
+          doubtTitle: answer.doubt?.title,
+          doubtId: answer.doubtId,
+          actorId: reviewer.id,
+        },
+        tx
+      );
+    } else if (decision === 'REJECTED') {
+      await notifyAnswerRejected(
+        {
+          answer,
+          doubtTitle: answer.doubt?.title,
+          doubtId: answer.doubtId,
+          feedback: trimmedFeedback,
+          actorId: reviewer.id,
+        },
+        tx
+      );
+    } else if (decision === 'NEEDS_CHANGES') {
+      await notifyAnswerChangesRequested(
+        {
+          answer,
+          doubtTitle: answer.doubt?.title,
+          doubtId: answer.doubtId,
+          feedback: trimmedFeedback,
+          actorId: reviewer.id,
+        },
+        tx
+      );
+    }
+
+    return { answer: updatedAnswer, review };
+  });
+
+  return result;
+}
+
+/**
+ * Comprehensive Moderation Analytics for administrative reporting.
+ */
+export async function getAdminModerationAnalytics() {
+  const [
+    totalReviews,
+    approvedReviews,
+    rejectedReviews,
+    needsChangesReviews,
+    allReviewsWithDates,
+    moderatorsGrouped,
+    subjectsGrouped,
+  ] = await Promise.all([
+    prisma.moderationReview.count(),
+    prisma.moderationReview.count({ where: { decision: 'APPROVED' } }),
+    prisma.moderationReview.count({ where: { decision: 'REJECTED' } }),
+    prisma.moderationReview.count({ where: { decision: 'NEEDS_CHANGES' } }),
+    prisma.moderationReview.findMany({
+      select: {
+        reviewedAt: true,
+        decision: true,
+        answer: {
+          select: {
+            createdAt: true,
+            doubt: { select: { subject: true } },
+          },
+        },
+      },
+      orderBy: { reviewedAt: 'desc' },
+      take: 200,
+    }),
+    prisma.moderationReview.groupBy({
+      by: ['reviewerId'],
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 10,
+    }),
+    prisma.moderationReview.findMany({
+      select: {
+        decision: true,
+        answer: {
+          select: {
+            doubt: { select: { subject: true } },
+          },
+        },
+      },
+      take: 500,
+    }),
+  ]);
+
+  const approvalRate = totalReviews > 0 ? Math.round((approvedReviews / totalReviews) * 100) : 0;
+  const rejectionRate = totalReviews > 0 ? Math.round((rejectedReviews / totalReviews) * 100) : 0;
+  const needsChangesRate = totalReviews > 0 ? Math.round((needsChangesReviews / totalReviews) * 100) : 0;
+
+  // Calculate average review turnaround time in minutes
+  let totalTurnaroundMinutes = 0;
+  let turnaroundCount = 0;
+  for (const r of allReviewsWithDates) {
+    if (r.answer?.createdAt && r.reviewedAt) {
+      const diffMs = new Date(r.reviewedAt).getTime() - new Date(r.answer.createdAt).getTime();
+      if (diffMs > 0) {
+        totalTurnaroundMinutes += diffMs / (1000 * 60);
+        turnaroundCount++;
+      }
+    }
+  }
+  const avgTurnaroundMinutes = turnaroundCount > 0 ? Math.round(totalTurnaroundMinutes / turnaroundCount) : 0;
+
+  // Daily reviews for past 14 days
+  const dailyMap = new Map();
+  const now = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dateStr = d.toISOString().split('T')[0];
+    dailyMap.set(dateStr, { date: dateStr, count: 0, approved: 0, rejected: 0, needsChanges: 0 });
+  }
+
+  for (const r of allReviewsWithDates) {
+    if (r.reviewedAt) {
+      const dateStr = new Date(r.reviewedAt).toISOString().split('T')[0];
+      if (dailyMap.has(dateStr)) {
+        const item = dailyMap.get(dateStr);
+        item.count++;
+        if (r.decision === 'APPROVED') item.approved++;
+        if (r.decision === 'REJECTED') item.rejected++;
+        if (r.decision === 'NEEDS_CHANGES') item.needsChanges++;
+      }
+    }
+  }
+
+  // Moderator activity details
+  const reviewerIds = moderatorsGrouped.map((m) => m.reviewerId);
+  const reviewers = await prisma.user.findMany({
+    where: { id: { in: reviewerIds } },
+    select: { id: true, name: true, role: true, email: true },
+  });
+  const reviewerMap = new Map(reviewers.map((u) => [u.id, u]));
+
+  const moderatorActivity = moderatorsGrouped.map((m) => {
+    const u = reviewerMap.get(m.reviewerId);
+    return {
+      reviewerId: m.reviewerId,
+      name: u?.name || 'Unknown',
+      role: u?.role || 'MODERATOR',
+      totalReviews: m._count.id,
+    };
+  });
+
+  // Subject quality breakdown
+  const subjectMap = new Map();
+  for (const item of subjectsGrouped) {
+    const sub = item.answer?.doubt?.subject || 'General';
+    if (!subjectMap.has(sub)) {
+      subjectMap.set(sub, { subject: sub, total: 0, approved: 0, rejected: 0, needsChanges: 0 });
+    }
+    const entry = subjectMap.get(sub);
+    entry.total++;
+    if (item.decision === 'APPROVED') entry.approved++;
+    if (item.decision === 'REJECTED') entry.rejected++;
+    if (item.decision === 'NEEDS_CHANGES') entry.needsChanges++;
+  }
+  const subjectDistribution = Array.from(subjectMap.values()).sort((a, b) => b.total - a.total);
+
+  return {
+    summary: {
+      totalReviews,
+      approvedReviews,
+      rejectedReviews,
+      needsChangesReviews,
+      approvalRate,
+      rejectionRate,
+      needsChangesRate,
+      avgTurnaroundMinutes,
+    },
+    dailyReviews: Array.from(dailyMap.values()),
+    moderatorActivity,
+    subjectDistribution,
   };
 }
 
