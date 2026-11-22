@@ -755,11 +755,20 @@ Contributions to DoubtBridge are welcomed! To ensure code quality and stability,
 
 ---
 
-## 👤 Authors & Contact
+## 👥 Authors & Contributors
 
-**Keshav Singh**
-- **GitHub**: [@keshav62](https://github.com/keshav62)
-- **Project Repository**: [DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform](https://github.com/keshav62/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform)
+| Contributor | GitHub Profile | Role / Focus Areas |
+|:---|:---:|:---|
+| **Keshav Singh** | [@keshav62](https://github.com/keshav62) | Full-Stack Development, Security & System Architecture |
+| **Vishal Dadrwal** | [@vishaldadrwal](https://github.com/vishaldadrwal) | Core Platform Modules & Feature Engineering |
+| **Kashika** | [@kashika-29](https://github.com/kashika-29) | Academic Workflows & Module Development |
+
+---
+
+### 📬 Project Repository & Issues
+
+- **GitHub Repository**: [DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform](https://github.com/keshav62/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform)
+- **Issue Tracker & Discussions**: [GitHub Issues](https://github.com/keshav62/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/issues)
 
 ---
 
