@@ -34,6 +34,7 @@ For exhaustive technical references, see the dedicated architecture, API, securi
 - [docs/ARCHITECTURE.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/ARCHITECTURE.md) — System design, module hierarchy, ER diagrams, data flows, and state machines.
 - [docs/API.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/API.md) — Complete REST API catalog with methods, endpoints, query/body payloads, roles, and status codes.
 - [docs/SECURITY.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/SECURITY.md) — Threat model, session crypto, RBAC policy, IDOR defense, rate limiting, and forensic audit log retention.
+- [docs/ADMIN_BOOTSTRAP.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/ADMIN_BOOTSTRAP.md) — Controlled bootstrap procedure for initial administrative account promotion.
 - [docs/DEPLOYMENT.md](file:///e:/DoubtBridge-Peer-to-Peer-Academic-Doubt-Resolution-Platform/docs/DEPLOYMENT.md) — Production setup for Vercel and Node.js, Prisma migrations, and post-deployment checklist.
 
 ---
