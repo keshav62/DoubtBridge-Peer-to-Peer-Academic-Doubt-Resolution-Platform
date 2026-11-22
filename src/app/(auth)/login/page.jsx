@@ -3,24 +3,30 @@
 import { useState, useTransition, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Mail, Lock, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, CheckCircle2, Loader2, Eye, EyeOff } from 'lucide-react';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const callbackUrl = searchParams.get('callbackUrl') || '';
+  const resetSuccess = searchParams.get('reset') === 'success';
+  const registeredSuccess = searchParams.get('registered') === 'true';
+  const errorParam = searchParams.get('error');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(
+    errorParam === 'AccountSuspended'
+      ? 'Your account has been suspended. Please contact administrator.'
+      : ''
+  );
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
 
-    // Basic client-side validation
     if (!email.trim() || !password) {
       setError('Please enter your email and password.');
       return;
@@ -41,8 +47,15 @@ function LoginForm() {
           return;
         }
 
-        // Safe redirect — only allow relative URLs
-        const target = callbackUrl.startsWith('/') ? callbackUrl : '/dashboard';
+        // Determine destination: prefer explicit safe callbackUrl, or role-based redirectUrl
+        let target = '/dashboard';
+        if (callbackUrl && callbackUrl.startsWith('/') && callbackUrl !== '/login') {
+          target = callbackUrl;
+        } else if (data.redirectUrl) {
+          target = data.redirectUrl;
+        }
+
+        // Full navigation to ensure session cookie is immediately active
         window.location.href = target;
       } catch {
         setError('A network error occurred. Please check your connection.');
@@ -64,6 +77,28 @@ function LoginForm() {
         <h1 className="text-2xl font-extrabold text-[#101B3D] mb-1">Welcome back</h1>
         <p className="text-sm text-[#64748B]">Sign in to access your doubts and peer sessions</p>
       </div>
+
+      {/* Success alert: Password reset */}
+      {resetSuccess && (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-emerald-600" />
+          <span>Your password has been reset successfully. Please sign in with your new credentials.</span>
+        </div>
+      )}
+
+      {/* Success alert: Registered */}
+      {registeredSuccess && (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+        >
+          <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0 text-blue-600" />
+          <span>Your account has been created. Please sign in to continue.</span>
+        </div>
+      )}
 
       {/* Error alert */}
       {error && (
@@ -102,9 +137,17 @@ function LoginForm() {
 
           {/* Password */}
           <div className="space-y-1.5">
-            <label htmlFor="login-password" className="block text-sm font-semibold text-[#344568]">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="login-password" className="block text-sm font-semibold text-[#344568]">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-xs font-semibold text-[#2563EB] hover:text-[#1D4ED8] transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
               <input
@@ -164,7 +207,6 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#F5F9FF] flex items-center justify-center px-4 py-12">
-      {/* Subtle background gradient */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 overflow-hidden"

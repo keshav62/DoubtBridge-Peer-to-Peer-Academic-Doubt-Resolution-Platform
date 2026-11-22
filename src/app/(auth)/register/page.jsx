@@ -3,7 +3,20 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Lock, ChevronDown, ArrowRight, AlertCircle, Loader2, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import {
+  User,
+  Mail,
+  Lock,
+  GraduationCap,
+  BookOpen,
+  ChevronDown,
+  ArrowRight,
+  AlertCircle,
+  Loader2,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+} from 'lucide-react';
 
 function PasswordStrength({ password }) {
   const checks = [
@@ -15,7 +28,10 @@ function PasswordStrength({ password }) {
   return (
     <ul className="mt-2 space-y-1">
       {checks.map((c) => (
-        <li key={c.label} className={`flex items-center gap-1.5 text-xs ${c.ok ? 'text-emerald-600' : 'text-[#94A3B8]'}`}>
+        <li
+          key={c.label}
+          className={`flex items-center gap-1.5 text-xs ${c.ok ? 'text-emerald-600' : 'text-[#94A3B8]'}`}
+        >
           <CheckCircle2 size={12} className={c.ok ? 'text-emerald-500' : 'text-[#CBD5E1]'} />
           {c.label}
         </li>
@@ -26,14 +42,66 @@ function PasswordStrength({ password }) {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ name: '', email: '', role: 'STUDENT', password: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    role: 'STUDENT',
+    department: '',
+    academicYear: '',
+    password: '',
+    confirmPassword: '',
+  });
+
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState([]);
   const [isPending, startTransition] = useTransition();
+
+  const departments = [
+    'Computer Science & Engineering',
+    'Information Technology',
+    'Electrical & Electronics',
+    'Mechanical Engineering',
+    'Mathematics & Computing',
+    'Physics & Applied Sciences',
+    'Business & Economics',
+    'Other / General Studies',
+  ];
+
+  const academicYears = [
+    '1st Year (Freshman)',
+    '2nd Year (Sophomore)',
+    '3rd Year (Junior)',
+    '4th Year (Senior)',
+    'Graduate / Master’s',
+    'PhD / Doctoral',
+  ];
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setErrors([]);
+
+    const validationErrors = [];
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      validationErrors.push('Full name must be at least 2 characters.');
+    }
+    if (!form.email.trim() || !form.email.includes('@')) {
+      validationErrors.push('Please provide a valid academic email address.');
+    }
+    if (form.password.length < 8) {
+      validationErrors.push('Password must be at least 8 characters long.');
+    }
+    if (!/[A-Za-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      validationErrors.push('Password must include both letters and numbers.');
+    }
+    if (form.password !== form.confirmPassword) {
+      validationErrors.push('Passwords do not match.');
+    }
+
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -50,8 +118,9 @@ export default function RegisterPage() {
           return;
         }
 
-        router.push('/dashboard');
-        router.refresh();
+        // Navigate to the role's appropriate dashboard
+        const destination = data.redirectUrl || (form.role === 'HELPER' ? '/helper' : '/dashboard');
+        window.location.href = destination;
       } catch {
         setErrors(['A network error occurred. Please check your connection.']);
       }
@@ -72,7 +141,7 @@ export default function RegisterPage() {
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-[#EDE9FE] opacity-30 blur-3xl" />
       </div>
 
-      <div className="relative w-full max-w-[480px]">
+      <div className="relative w-full max-w-[520px]">
         {/* Brand mark */}
         <div className="mb-8 flex flex-col items-center text-center">
           <Link href="/" className="flex items-center gap-2.5 mb-4 group">
@@ -90,7 +159,7 @@ export default function RegisterPage() {
         {errors.length > 0 && (
           <div
             role="alert"
-            className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
+            className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 space-y-1"
           >
             {errors.map((err, i) => (
               <div key={i} className="flex items-start gap-2 text-sm text-red-700">
@@ -103,7 +172,7 @@ export default function RegisterPage() {
 
         {/* Card */}
         <div className="rounded-2xl border border-[#E5EAF2] bg-white p-8 shadow-sm shadow-slate-200/60">
-          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {/* Full Name */}
             <div>
               <label htmlFor="reg-name" className={labelCls}>Full Name</label>
@@ -142,7 +211,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Role select — only STUDENT and HELPER can self-register */}
+            {/* Role selection */}
             <div>
               <label htmlFor="reg-role" className={labelCls}>Primary Role</label>
               <div className="relative">
@@ -157,6 +226,53 @@ export default function RegisterPage() {
                   <option value="HELPER">Peer Helper — Answer &amp; earn reputation</option>
                 </select>
                 <ChevronDown size={15} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+              </div>
+            </div>
+
+            {/* Department & Academic Year row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="reg-dept" className={labelCls}>Department (Optional)</label>
+                <div className="relative">
+                  <BookOpen size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                  <input
+                    id="reg-dept"
+                    type="text"
+                    list="departments-list"
+                    value={form.department}
+                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                    placeholder="Computer Science"
+                    disabled={isPending}
+                    className={`${inputCls} pl-9 pr-3.5`}
+                  />
+                  <datalist id="departments-list">
+                    {departments.map((d) => (
+                      <option key={d} value={d} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="reg-year" className={labelCls}>Academic Year (Optional)</label>
+                <div className="relative">
+                  <GraduationCap size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                  <input
+                    id="reg-year"
+                    type="text"
+                    list="years-list"
+                    value={form.academicYear}
+                    onChange={(e) => setForm({ ...form, academicYear: e.target.value })}
+                    placeholder="3rd Year"
+                    disabled={isPending}
+                    className={`${inputCls} pl-9 pr-3.5`}
+                  />
+                  <datalist id="years-list">
+                    {academicYears.map((y) => (
+                      <option key={y} value={y} />
+                    ))}
+                  </datalist>
+                </div>
               </div>
             </div>
 
@@ -186,6 +302,39 @@ export default function RegisterPage() {
                 </button>
               </div>
               <PasswordStrength password={form.password} />
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label htmlFor="reg-confirm-password" className={labelCls}>Confirm Password</label>
+              <div className="relative">
+                <Lock size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                <input
+                  id="reg-confirm-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="new-password"
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                  placeholder="••••••••"
+                  disabled={isPending}
+                  className={`${inputCls} pl-9 pr-10`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#64748B]"
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              {form.confirmPassword && (
+                <p className={`mt-1.5 text-xs flex items-center gap-1 ${form.password === form.confirmPassword ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <CheckCircle2 size={12} className={form.password === form.confirmPassword ? 'text-emerald-500' : 'text-red-400'} />
+                  {form.password === form.confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                </p>
+              )}
             </div>
 
             {/* Submit */}
